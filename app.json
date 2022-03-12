@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "graphic_editor",
+    "slug": "graphic_editor",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  },
+  "name": "graphic_editor"
+}
