@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react'
-import { StyleSheet, SafeAreaView , View, ScrollView, Text, Pressable, Dimensions, Button } from 'react-native'
+import React, { useEffect, useState, useRef } from 'react'
+import { StyleSheet, SafeAreaView , View, ScrollView, Text, Pressable, Dimensions, Button, Keyboard, ToastAndroid } from 'react-native'
 import Canvas from 'react-native-canvas'
-import { FontAwesome5, Entypo, Fontisto, MaterialCommunityIcons, MaterialIcons, Ionicons } from '@expo/vector-icons'
+import { FontAwesome5, Entypo, Fontisto, MaterialCommunityIcons, MaterialIcons, Ionicons, Foundation, Feather } from '@expo/vector-icons'
 import {
-  Dialog
+  Checkbox,
+  Dialog, TextInput
 } from 'react-native-paper'
+import SelectDropdown from 'react-native-select-dropdown'
+import Slider from '@react-native-community/slider'
+import { ColorPicker } from 'react-native-color-picker'
 
 export default function App() {
   return (
@@ -25,13 +29,60 @@ export function MainActivity() {
 
   const [isTextToolDialogVisible, setIsTextToolDialogVisible] = useState(false)
 
+  const [isInit, setIsInit] = useState(false)
+
+  const [textToolDialogContent, setTextToolDialogContent] = useState('')
+
+  const textToolDialogFonts = [
+    'serif',
+    'arial'
+  ]
+  const [textToolDialogFont, setTextToolDialogFont] = useState('serif')
+
+  const [isTextToolDialogBold, setIsTextToolDialogBold] = useState(false)
+
+  const [isTextToolDialogItalic, setIsTextToolDialogItalic] = useState(false)
+
+  const [isTextToolDialogSmooth, setIsTextToolDialogSmooth] = useState('18')
+
+  const [textToolDialogFontSize, setTextToolDialogFontSize] = useState('0')
+
+  var textToolDialogFontSizeRef = useRef(null)
+
+  const [textToolDialogSpace, setTextToolDialogSpace] = useState('0')
+
+  const [textToolDialogLineHeight, setTextToolDialogLineHeight] = useState('0')
+
+  const [textToolDialogRotationDegress, setTextToolDialogRotationDegress] = useState('0')
+
+  const [textToolDialogOutlineWidth, setTextToolDialogOutlineWidth] = useState('0')
+
+  const [isTextToolDialogRoundOutline, setIsTextToolDialogRoundOutline] = useState(false)
+
+  const [textToolDialogColorPickerTextColor, setTextToolDialogColorPickerTextColor] = useState('')
+
+  const [textToolDialogColorPickerTextTempColor, setTextToolDialogColorPickerTextTempColor] = useState('')
+
+  const [isTextToolDialogColorPickerVisible, setIsTextToolDialogColorPickerVisible] = useState(false)
+
+  const [textToolDialogColorPickerTextOutlineColor, setTextToolDialogColorPickerTextOutlineColor] = useState('')
+
+  const [textToolDialogColorPickerTextOutlineTempColor, setTextToolDialogColorPickerTextOutlineTempColor] = useState('')
+
+  const [isTextToolDialogColorPickerOutlineVisible, setIsTextToolDialogColorPickerOutlineVisible] = useState(false)
+
+  const showToast = (msg) => {
+    ToastAndroid.show(msg, ToastAndroid.LONG)
+  }
+
   const handleCanvas = (canvas) => {
     try {
       setCtx(canvas.getContext('2d'))
-      // canvas.width = Dimensions.get('window').width
-      // canvas.height = Dimensions.get('window').height
-      // canvas.width = 1000
-      // canvas.height = 1000
+      if (!isInit) {
+        canvas.width = Dimensions.get('window').width
+        canvas.height = Dimensions.get('window').height
+        setIsInit(true)
+      }
     } catch (e) {
       console.log(`Ошибка получения контекста: ${e}`)
     }
@@ -90,6 +141,15 @@ export function MainActivity() {
       ctx.fillStyle = 'rgb(0, 0, 0)'
       ctx.lineWidth = 1.0
       ctx.beginPath()
+    } else if (isTextTool) {
+      console.log('добавляем положение для текста')
+      const nativeEvent = event.nativeEvent
+      const x = nativeEvent.pageX
+      const y = nativeEvent.pageY
+      setInitialTouch({
+        x,
+        y
+      })
     }
   }
 
@@ -131,6 +191,8 @@ export function MainActivity() {
       const y = nativeEvent.pageY
       ctx.clearRect(0, 0, 1000, 1000)
       ctx.fillRect(initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
+    } else if (isFillTool) {
+      ctx.fillRect(0, 0, 1000, 1000)
     }
   }
 
@@ -163,14 +225,16 @@ export function MainActivity() {
       console.log('закрываем кривую')
       ctx.closePath()
     } else if (isFillTool) {
-
+      ctx.fillStyle = 'rgb(0, 0, 0)'
+      ctx.fillRect(0, 0, 1000, 1000)
     } else if (isGradientTool) {
       ctx.clearRect(0, 0, 1000, 1000)
-      const gradient = ctx.createLinearGradient(0, 0, 1000, 1000)
-      // gradient.addColorStop(0, 'black')
-      // gradient.addColorStop(1, 'white')
-      ctx.fillStyle = gradient
-      ctx.fillRect(0, 0, 100, 100)
+      ctx.createLinearGradient(0, 0, 1000, 1000).then((gradient) => {
+        gradient.addColorStop(0, 'black')
+        gradient.addColorStop(1, 'white')
+        ctx.fillStyle = gradient
+        ctx.fillRect(0, 0, 1000, 1000)
+      })
     } else if (isTextTool) {
       setIsTextToolDialogVisible(true)
     }
@@ -285,26 +349,318 @@ export function MainActivity() {
       </ScrollView>
       <Dialog
         visible={isTextToolDialogVisible}
-        onDismiss={() => setIsTextToolDialogVisible(false)}>
+        onDismiss={() => {
+          setIsTextToolDialogVisible(false)
+          setTextToolDialogContent('')
+          setTextToolDialogFontSize(18)
+          setIsTextToolDialogBold(false)
+          setIsTextToolDialogItalic(false)
+        }}>
         <Dialog.Title>
-          Статистика
+        
         </Dialog.Title>
         <Dialog.Content>
-          <Text>
-            Количество символов
-          </Text>
+          <ScrollView
+            height={350}
+          >
+            <Text>
+              Текст
+            </Text>
+            <View
+              style={styles.dialogContentRow}
+            >
+              <TextInput
+                width={200}
+                value={textToolDialogContent}
+                multiline
+                onChangeText={(value) => setTextToolDialogContent(value)}
+              />
+              <FontAwesome5
+                name="microphone"
+                size={24}
+                color="black"
+                onPress={() => showToast('В настоящее время фукнция\nголосового набора\nне используется')}
+              />
+              <Entypo
+                name="keyboard"
+                size={24}
+                color="black"
+                onPress={() => Keyboard.dismiss()}
+              />
+            </View>
+            <Text>
+              Шрифт
+            </Text>
+            <SelectDropdown
+              defaultButtonText={'serif'}
+              data={textToolDialogFonts}
+              onSelect={(selectedItem, index) => {
+                setTextToolDialogFont(selectedItem)
+              }}
+              buttonTextAfterSelection={(selectedItem, index) => {
+                return selectedItem
+              }}
+              rowTextForSelection={(item, index) => {
+                return item
+              }}
+              style={styles.addAmountActivityContainerDropDown}
+              renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+            />
+            <View
+              style={styles.dialogContentRow}
+            >
+              <MaterialCommunityIcons
+                name="rectangle"
+                size={24}
+                color="black"
+                onPress={() => setIsTextToolDialogColorPickerVisible(true)}
+              />
+              <MaterialIcons name="format-align-left" size={24} color="black" />
+              <MaterialIcons name="format-align-center" size={24} color="black" />
+              <MaterialIcons name="format-align-right" size={24} color="black" />
+              <Foundation
+                name="bold"
+                size={24}
+                color={
+                  isTextToolDialogBold ?
+                    'rgb(0, 0, 0)'
+                  :
+                    'rgb(200, 200, 200)'
+                }
+                onPress={() => setIsTextToolDialogBold(!isTextToolDialogBold)}
+              />
+              <Feather
+                name="italic"
+                size={24}
+                color={
+                  isTextToolDialogItalic ?
+                    'rgb(0, 0, 0)'
+                  :
+                    'rgb(200, 200, 200)'
+                }
+                onPress={() => setIsTextToolDialogItalic(!isTextToolDialogItalic)}
+              />
+              <Ionicons name="text-outline" size={24} color="black" />
+            </View>
+            <View
+              style={styles.dialogContentRow}
+            >
+              <Checkbox
+                isChecked={isTextToolDialogSmooth}
+                onClick={() => setIsTextToolDialogSmooth(!isTextToolDialogSmooth)}
+              />
+              <Text>
+                Сглаживание
+              </Text>
+            </View>
+            <Text>
+              {
+                `Размер текста ${textToolDialogFontSize} pt`
+              }
+            </Text>
+            <Slider
+              style={{width: 315, height: 40}}
+              ref={(ref) => {
+                textToolDialogFontSizeRef = ref
+              }}
+              onValueChange={(value) => {
+                const parsedFontSize = Number.parseInt(value)
+                setTextToolDialogFontSize(parsedFontSize)
+              }}
+              minimumValue={0}
+              maximumValue={100}
+              minimumTrackTintColor="rgb(150, 150, 150)"
+              maximumTrackTintColor="rgb(150, 150, 150)"
+            />
+            <Text>
+              {
+                `Текстовое пространство ${textToolDialogSpace}`
+              }
+            </Text>
+            <Slider
+              style={{width: 315, height: 40}}
+              onValueChange={(value) => {
+                const parsedSpace = Number.parseInt(value)
+                setTextToolDialogSpace(parsedSpace)
+              }}
+              minimumValue={0}
+              maximumValue={100}
+              minimumTrackTintColor="rgb(150, 150, 150)"
+              maximumTrackTintColor="rgb(150, 150, 150)"
+            />
+            <Text>
+              {
+                `Междустрочный интервал ${textToolDialogLineHeight}`
+              }
+            </Text>
+            <Slider
+              style={{width: 315, height: 40}}
+              onValueChange={(value) => {
+                const parsedLineHeight = Number.parseInt(value)
+                setTextToolDialogLineHeight(parsedLineHeight)
+              }}
+              minimumValue={0}
+              maximumValue={100}
+              minimumTrackTintColor="rgb(150, 150, 150)"
+              maximumTrackTintColor="rgb(150, 150, 150)"
+            />
+            <Text>
+              Градус поворота
+            </Text>
+            <View
+              style={styles.dialogContentRow}
+            >
+              <TextInput
+                value={textToolDialogRotationDegress}
+                width={100}
+                onChangeText={(value) => setTextToolDialogRotationDegress(value)}
+              />
+              <MaterialIcons name="text-rotation-none" size={24} color="black" />
+              <MaterialIcons name="text-rotation-down" size={24} color="black" />
+              <MaterialCommunityIcons name="format-text-rotation-up" size={24} color="black" />
+            </View>
+            <View
+              style={styles.dialogContentRow}
+            >
+              <View>
+                <Text>
+                  Цвет края
+                </Text>
+                <MaterialCommunityIcons
+                  name="rectangle"
+                  size={24}
+                  color="black"
+                  onPress={() => setIsTextToolDialogColorPickerOutlineVisible(true)}
+                />
+              </View>
+              <View>
+                <Text>
+                  {
+                    `Ширина края ${textToolDialogOutlineWidth} px`
+                  }
+                </Text>
+                <Slider
+                  style={{width: 215, height: 40}}
+                  onValueChange={(value) => {
+                    const parsedOutlineWidth = Number.parseInt(value)
+                    setTextToolDialogOutlineWidth(parsedOutlineWidth)
+                  }}
+                  minimumValue={0}
+                  maximumValue={100}
+                  minimumTrackTintColor="rgb(150, 150, 150)"
+                  maximumTrackTintColor="rgb(150, 150, 150)"
+                />
+                <View
+                  style={styles.dialogContentRow}
+                >
+                  <Checkbox
+                    isChecked={isTextToolDialogRoundOutline}
+                    onClick={() => setIsTextToolDialogRoundOutline(!isTextToolDialogRoundOutline)}
+                  />
+                  <Text>
+                    Круглые края
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
         </Dialog.Content>
+
         <Dialog.Actions>
           <Button
             title="ОТМЕНА"
             onPress={() => {
               setIsTextToolDialogVisible(false)
+              setTextToolDialogContent('')
+              setTextToolDialogFontSize(18)
+              setIsTextToolDialogBold(false)
+              setIsTextToolDialogItalic(false)
+            }}
+          />
+          <Button
+            title="ЗАДАТЬ"
+            onPress={() => {
+              // ctx.font = 'bold 48px serif'
+              ctx.font = `${isTextToolDialogItalic ? 'italic ' : ''} ${isTextToolDialogBold ? 'bold ' : ''} ${textToolDialogFontSize}pt serif`
+              ctx.fillStyle = `${textToolDialogColorPickerTextColor}`
+              ctx.fillText(textToolDialogContent, initialTouch.x, initialTouch.y)
+              setIsTextToolDialogVisible(false)
+              setTextToolDialogContent('')
+              setTextToolDialogFontSize(18)
+              setIsTextToolDialogBold(false)
+              setIsTextToolDialogItalic(false)
+              setTextToolDialogColorPickerTextColor('')
+              setTextToolDialogColorPickerTextTempColor('')
+              setTextToolDialogColorPickerTextOutlineColor('')
+              setTextToolDialogColorPickerTextOutlineTempColor('')
+            }}
+          />
+        </Dialog.Actions>
+      </Dialog>
+      <Dialog
+        visible={isTextToolDialogColorPickerVisible}
+        onDismiss={() => setIsTextToolDialogColorPickerVisible(false)}>
+        <Dialog.Title>
+          
+        </Dialog.Title>
+        <Dialog.Content>
+          <View
+            style={styles.colorPickerWrap}
+          >
+
+          </View>
+          <ColorPicker
+            onColorSelected={color => setTextToolDialogColorPickerTextTempColor(color)}
+            style={styles.colorpiker}
+          />
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button
+            title="ОТМЕНА"
+            onPress={() => {
+              showToast(`ОТМЕНА`)
+              setIsTextToolDialogColorPickerVisible(false)
             }}
           />
           <Button
             title="ОК"
             onPress={() => {
-              setIsTextToolDialogVisible(false)
+              setIsTextToolDialogColorPickerVisible(false)
+              setTextToolDialogColorPickerTextColor(textToolDialogColorPickerTextTempColor)
+            }}
+          />
+        </Dialog.Actions>
+      </Dialog>
+      <Dialog
+        visible={isTextToolDialogColorPickerOutlineVisible}
+        onDismiss={() => setIsTextToolDialogColorPickerOutlineVisible(false)}>
+        <Dialog.Title>
+          
+        </Dialog.Title>
+        <Dialog.Content>
+          <View
+            style={styles.colorPickerWrap}
+          >
+
+          </View>
+          <ColorPicker
+            onColorSelected={color => setTextToolDialogColorPickerTextOutlineTempColor(color)}
+            style={styles.colorpiker}
+          />
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button
+            title="ОТМЕНА"
+            onPress={() => {
+              showToast(`ОТМЕНА`)
+              setIsTextToolDialogColorPickerOutlineVisible(false)
+            }}
+          />
+          <Button
+            title="ОК"
+            onPress={() => {
+              setIsTextToolDialogColorPickerOutlineVisible(false)
+              setTextToolDialogColorPickerTextOutlineColor(textToolDialogColorPickerTextOutlineTempColor)
             }}
           />
         </Dialog.Actions>
@@ -320,5 +676,22 @@ const styles = StyleSheet.create({
   },
   toolBarItem: {
     marginHorizontal: 25
+  },
+  dialogContentRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginVertical: 15
+  },
+  colorPickerWrap: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'center'
+  },
+  colorpiker:{
+    width: '75%',
+    height: '75%'
   }
 })
