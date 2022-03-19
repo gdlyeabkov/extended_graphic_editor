@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { StyleSheet, SafeAreaView , View, ScrollView, Text, Pressable, Dimensions, Button, Keyboard, ToastAndroid, DrawerLayoutAndroid, TouchableOpacity, Image } from 'react-native'
+import { StyleSheet, SafeAreaView , View, ScrollView, Text, Pressable, Dimensions, Button, Keyboard, ToastAndroid, DrawerLayoutAndroid, TouchableOpacity, Image, Environment } from 'react-native'
 import Canvas from 'react-native-canvas'
-import { FontAwesome5, Entypo, Fontisto, MaterialCommunityIcons, MaterialIcons, Ionicons, Foundation, Feather, SimpleLineIcons } from '@expo/vector-icons'
+import { FontAwesome5, Entypo, Fontisto, MaterialCommunityIcons, MaterialIcons, Ionicons, Foundation, Feather, SimpleLineIcons, FontAwesome } from '@expo/vector-icons'
 import {
   Checkbox,
   Dialog, TextInput
@@ -11,10 +11,165 @@ import Slider from '@react-native-community/slider'
 import { ColorPicker } from 'react-native-color-picker'
 import * as MaterialMenu from 'react-native-material-menu'
 import { getImgFromArr, getDataUrlFromArr } from 'array-to-image'
+// import 'text-encoding-polyfill'
+import * as encoding from 'text-encoding'
+// import RNFetchBlob from 'rn-fetch-blob'
+// import RNFetchBlob from 'react-native-fetch-blob'
+// var RNFetchBlob = require('rn-fetch-blob').default
+import * as FileSystem from 'expo-file-system'
+import { NavigationContainer } from '@react-navigation/native'
+import { createNativeStackNavigator } from '@react-navigation/native-stack'
+
+const Stack = createNativeStackNavigator()
 
 export default function App() {
+  
+  // const testActivity = 'MainActivity'
+  // const testActivity = 'GalleryActivity'
+  const testActivity = 'StartActivity'
+  // const testActivity = 'CreateCanvasActivity'
+
   return (
-    <MainActivity />
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName={testActivity}>
+        <Stack.Screen
+          name="MainActivity"
+          component={MainActivity}
+          options={{
+            title: 'Softtrack Графический редактор'
+          }}
+        />
+        <Stack.Screen
+          name="GalleryActivity"
+          component={GalleryActivity}
+          options={{
+            title: 'Моя галерея'
+          }}
+        />
+        <Stack.Screen
+          name="StartActivity"
+          component={StartActivity}
+          options={{
+            title: ''
+          }}
+        />
+        <Stack.Screen
+          name="CreateCanvasActivity"
+          component={CreateCanvasActivity}
+          options={{
+            title: 'Новый холст'
+          }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  )
+}
+
+export function GalleryActivity() {
+  
+  const [docsList, setDocsList] = useState([])
+
+  const _getAllFilesInDirectory = async() => {
+    let dir = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory)
+    dir.map(async (val) => {
+      console.log(`FileSystem.cacheDirectory + val: ${FileSystem.cacheDirectory + val}`)
+      const fileUri = FileSystem.cacheDirectory + val
+      const content = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.UTF8 })
+      const info = await FileSystem.getInfoAsync(fileUri)
+      const fileUriParts = fileUri.split('/')
+      const fileUriPartsLength = fileUriParts.length
+      const lastFileUriPartIndex = fileUriPartsLength - 1
+      const fileName = fileUriParts[lastFileUriPartIndex]
+      const docInfo = {
+        content: content,
+        info: info,
+        name: fileName
+      }
+      console.log(info)
+      if (fileName.includes('.png')) {
+        docsList.push(docInfo)
+      }
+    })
+  }
+  
+  useEffect(() => _getAllFilesInDirectory(), [])
+
+  _getAllFilesInDirectory()
+
+  const getParsedDate = (modificationTime) => {
+    const currentDateTime = new Date()
+    currentDateTime.setMilliseconds(modificationTime)
+    const year = currentDateTime.getFullYear()
+    const monthIndex = currentDateTime.getMonth()
+    // const month = monthIndex + 1
+    const month = currentDateTime.getMonth()
+    const day = currentDateTime.getDate()
+    const hours = currentDateTime.getHours()
+    const minutes = currentDateTime.getMinutes()
+    return `${year}/${month}/${day} ${hours}:${minutes}`
+  }
+
+  return (
+    <ScrollView>
+      {
+        docsList.map((doc, docIndex) => {
+          return (
+            <View
+              key={docIndex}
+              style={styles.galleryActivityContainerItem}
+            >
+              <Image
+                width="200"
+                height="200"
+                style={{
+                  width: 200,
+                  height: 200,
+                  minWidth: 200,
+                  minHeight: 200,
+                  borderWidth: 1,
+                  borderColor: 'rgb(0, 0, 0)',
+                  backgroundColor: 'rgb(255, 255, 255)'
+                }}
+                // source={{uri: doc.info.uri}}
+                source={{uri:'file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540anonymous%252Fgraphic_editor-3dec9138-7521-40a1-a173-5dadabf73790/extended_graphic_editor_export.png'}}
+              />
+              <Text>
+                {
+                  getParsedDate(doc.info.modificationTime)
+                }
+              </Text>
+              <Text>
+                {
+                  `${
+                    doc.info.size / 1024 / 1024 > 0 ?
+                      `${(doc.info.size / 1024 / 1024).toFixed(2)} MB`
+                    : doc.info.size / 1024 > 0 ?
+                      `${doc.info.size / 1024} KB`
+                    : `${doc.info.size.toFixed(2)} B`
+                  }`
+                }
+              </Text>
+              <View
+                style={styles.galleryActivityContainerItemFooter}
+              >
+                <FontAwesome5
+                  name="trash"
+                  size={24}
+                  color="black"
+                  style={styles.galleryActivityContainerItemFooterElement}
+                />
+                <Feather
+                  name="more-vertical"
+                  size={24}
+                  color="black"
+                  style={styles.galleryActivityContainerItemFooterElement}
+                />
+              </View>
+            </View>
+          )
+        })
+      }
+    </ScrollView>
   )
 }
 
@@ -136,6 +291,12 @@ export function MainActivity() {
     },
   ])
 
+  const [isSelectionContextMenuVisible, setIsSelectionContextMenuVisible] = useState(false)
+
+  const [isEditContextMenuVisible, setIsEditContextMenuVisible] = useState(false)
+
+  const [isToggleOrientationContextMenuVisible, setIsToggleOrientationContextMenuVisible] = useState(false)
+
   const [imgUri, setImgUri] = useState('')
 
   const getActiveLayerStyle = (layerIndex) => {
@@ -248,23 +409,23 @@ export function MainActivity() {
 
   const handleCanvas = async (canvas) => {
     try {
-      setCtx(canvas.getContext('2d'))
       if (!isInit) {
+        setCtx(canvas.getContext('2d'))
         canvas.width = Dimensions.get('window').width
         canvas.height = Dimensions.get('window').height - 250
         
-        ctx.fillStyle = 'rgb(0, 0, 0)'
-        ctx.fillRect(0, 0, 1000, 1000)
-        let imageData = await ctx.getImageData(60, 60, 200, 100)
+        // ctx.fillStyle = 'rgb(0, 0, 0)'
+        // ctx.fillRect(0, 0, 1000, 1000)
+        // let imageData = await ctx.getImageData(60, 60, 200, 100)
         // ctx.putImageData(imageData, 150, 10)
         // var bmp = new Bitmap(150, 150)
         // var url = bmp.dataURL()
         // console.log(`url: ${url}`)
-        console.log(`data: ${imageData.data}`)
+        // console.log(`data: ${imageData.data}`)
         // setImgUri(imageData.data)
-        const dataUrl = getDataUrlFromArr(imageData.data, canvas.width, canvas.height)
-        console.log(`dataUrl: ${dataUrl}`)
-        await setImgUri(dataUrl)
+        // const dataUrl = getDataUrlFromArr(imageData.data, canvas.width, canvas.height)
+        // console.log(`dataUrl: ${dataUrl}`)
+        // await setImgUri(dataUrl)
 
         setIsInit(true)
       }
@@ -478,6 +639,15 @@ export function MainActivity() {
     }
   }
 
+  const saveFile = async (content) => {
+    const savedFileName = 'extended_graphic_editor_export.png'
+    // let fileUri = FileSystem.cacheDirectory + savedFileName
+    let fileUri = FileSystem.cacheDirectory + savedFileName
+    console.log(`create fileUri: ${fileUri}`)
+    await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 })
+    showToast('Сохранение завершено')
+  }
+
   function drawEllipse(ctx, x, y, w, h) {
     var kappa = .5522848,
       ox = (w / 2) * kappa, // control point offset horizontal
@@ -485,15 +655,15 @@ export function MainActivity() {
       xe = x + w,           // x-end
       ye = y + h,           // y-end
       xm = x + w / 2,       // x-middle
-      ym = y + h / 2;       // y-middle
+      ym = y + h / 2       // y-middle
   
-    ctx.beginPath();
-    ctx.moveTo(x, ym);
-    ctx.bezierCurveTo(x, ym - oy, xm - ox, y, xm, y);
-    ctx.bezierCurveTo(xm + ox, y, xe, ym - oy, xe, ym);
-    ctx.bezierCurveTo(xe, ym + oy, xm + ox, ye, xm, ye);
-    ctx.bezierCurveTo(xm - ox, ye, x, ym + oy, x, ym);
-    ctx.stroke();
+    ctx.beginPath()
+    ctx.moveTo(x, ym)
+    ctx.bezierCurveTo(x, ym - oy, xm - ox, y, xm, y)
+    ctx.bezierCurveTo(xm + ox, y, xe, ym - oy, xe, ym)
+    ctx.bezierCurveTo(xe, ym + oy, xm + ox, ye, xm, ye)
+    ctx.bezierCurveTo(xm - ox, ye, x, ym + oy, x, ym)
+    ctx.stroke()
   }
 
   useEffect(() => {
@@ -522,28 +692,13 @@ export function MainActivity() {
             renderNavigationView={materialsNavigationView}
           >
             <SafeAreaView>
-              <Image
+              {/* <Image
                 source={imgUri}
                 style={{
                   width: 150,
                   height: 150
                 }}
-              />
-              <Pressable
-                style={[styles.canvas,
-                  {
-                  borderTopWidth: 1,
-                  borderTopColor: 'red'
-                }
-              ]}
-                onTouchStart={onCanvasTouchStart}
-                onTouchMove={onCanvasTouchMove}
-                onTouchEnd={onCanvasTouchEnd}
-              >
-                <Canvas
-                  ref={handleCanvas}
-                /> 
-              </Pressable>
+              /> */}
               <ScrollView
                 horizontal={true}
                 style={styles.toolBar}
@@ -753,6 +908,21 @@ export function MainActivity() {
 
                   </View>
               }
+              <Pressable
+                style={[styles.canvas,
+                  {
+                  borderTopWidth: 1,
+                  borderTopColor: 'red'
+                }
+              ]}
+                onTouchStart={onCanvasTouchStart}
+                onTouchMove={onCanvasTouchMove}
+                onTouchEnd={onCanvasTouchEnd}
+              >
+                <Canvas
+                  ref={handleCanvas}
+                /> 
+              </Pressable>
               <View
                 style={styles.toolBarPreFooter}
               >
@@ -804,7 +974,13 @@ export function MainActivity() {
                   style={styles.toolBarPreFooterItem}
                 >
                   <Button
-                    title="Save"
+                    title="Сохр."
+                    onPress={async () => {
+                      const uint8array = await ctx.getImageData(60, 60, 200, 100)
+                      const string = new encoding.TextDecoder('utf-8').decode(uint8array)
+                      console.log(`string: ${string}`)
+                      saveFile(string)
+                    }}
                   />
                 </View>
                 <Ionicons
@@ -828,19 +1004,402 @@ export function MainActivity() {
                   size={24}
                   color="black"
                   style={styles.toolBarFooterItem}
+                  onPress={() => setIsEditContextMenuVisible(true)}
                 />
+                <MaterialMenu.Menu
+                  onRequestClose={() => setIsEditContextMenuVisible(false)}
+                  visible={isEditContextMenuVisible}
+                >
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsEditContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Копия
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsEditContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Вырезать
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsEditContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Вставить
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsEditContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Повернуть холст влево
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsEditContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Повернуть холст
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsEditContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Повернуть холст по
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsEditContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Настройки холста
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsEditContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Обрезка
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                </MaterialMenu.Menu>
                 <MaterialCommunityIcons
                   name="selection"
                   size={24}
                   color="black"
                   style={styles.toolBarFooterItem}
+                  onPress={() => setIsSelectionContextMenuVisible(true)}
                 />
+                <MaterialMenu.Menu
+                  onRequestClose={() => setIsSelectionContextMenuVisible(false)}
+                  visible={isSelectionContextMenuVisible}
+                >
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsSelectionContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Сохранить все
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsSelectionContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Отменить выбор
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsSelectionContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Инвертировать
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsSelectionContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Выбрать область
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsSelectionContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Уменьшить/Увеличть
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsSelectionContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Свободная трансформация
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsSelectionContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Преобразование
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsSelectionContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Создать границу
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                </MaterialMenu.Menu>
                 <MaterialIcons
                   name="screen-rotation"
                   size={24}
                   color="black"
                   style={styles.toolBarFooterItem}
+                  onPress={() => setIsToggleOrientationContextMenuVisible(true)}
                 />
+                <MaterialMenu.Menu
+                  onRequestClose={() => setIsToggleOrientationContextMenuVisible(false)}
+                  visible={isToggleOrientationContextMenuVisible}
+                >
+                  <MaterialMenu.MenuItem
+                    onPress={async () => {
+                      setIsToggleOrientationContextMenuVisible(false)
+                      
+                      // await ctx.rotate(20 * Math.PI / 180)
+                      // ctx.save()
+                      await ctx.rotate(180)
+                      // ctx.restore()
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Поворот влево
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsToggleOrientationContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Поворот вправо
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsToggleOrientationContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Отразить по горизонтали
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsToggleOrientationContextMenuVisible(false)
+                    }}
+                  >
+                    <View
+                      style="gridViewContextMenuItem"
+                    >
+                      <MaterialCommunityIcons
+                        name="selection"
+                        size={24}
+                        color="black"
+                      />
+                      <Text>
+                        Сброс
+                      </Text>
+                    </View>
+                  </MaterialMenu.MenuItem>
+                </MaterialMenu.Menu>
                 <MaterialCommunityIcons
                   name="rectangle"
                   size={24}
@@ -1192,6 +1751,207 @@ export function MainActivity() {
   )
 }
 
+export function CreateCanvasActivity({ navigation }) {
+  
+  const goToActivity = (navigation, activityName, params = {}) => {
+    navigation.navigate(activityName, params)
+  }
+  
+  return (
+    <View
+      style={styles.createCanvasActivityContainer}
+    >
+      <Text
+        style={styles.createCanvasActivityContainerHeader}
+      >
+        Размер холста
+      </Text>
+      <Text
+        style={styles.createCanvasActivityContainerWidthLabel}
+      >
+        Ширина 1007px
+      </Text>
+      <View
+        style={styles.createCanvasActivityContainerRow}
+      >
+        <View
+          style={styles.createCanvasActivityContainerRowAside}
+        >
+          <Text
+            style={styles.createCanvasActivityContainerRowAsideHeightLabel}
+          >
+            Высота 1414px
+          </Text>
+          <Text
+            style={styles.createCanvasActivityContainerRowAsideDpiLabel}
+          >
+            точек на дюйм 350
+          </Text>
+        </View>
+        <View
+          style={styles.createCanvasActivityContainerRowEditBtn}
+        >
+          <Button
+            title="РЕДАКИРОВАТЬ"
+          />
+        </View>
+      </View>
+      <View
+        style={styles.createCanvasActivityContainerCreateBtn}
+      >
+        <Button
+          title="СОЗД"
+          onPress={() => goToActivity(navigation, 'MainActivity')}
+        />
+      </View>
+    </View>
+  )
+}
+
+export function StartActivity({ navigation }) {
+  
+  const goToActivity = (navigation, activityName, params = {}) => {
+    navigation.navigate(activityName, params)
+  }
+  
+  return (
+    <View
+      style={styles.startActivityContainer}
+    >
+      <Text
+        style={styles.startActivityContainerSendLabel}
+      >
+        Давайте порисуем
+      </Text>
+      <View
+        style={styles.startActivityContainerSend}
+      >
+        <TouchableOpacity
+          style={styles.startActivityContainerDrawItem}
+          onPress={() => goToActivity(navigation, 'CreateCanvasActivity')}
+        >
+          <View
+            style={styles.startActivityContainerSendItemPhoto}
+          >
+            <Entypo name="brush" size={50} color="rgb(255, 255, 255)" />
+          </View>
+          <Text
+            style={styles.startActivityContainerSendItemLabel}
+          >
+            {
+              'Новый холст'
+            }
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.startActivityContainerDrawItem}
+          onPress={() => goToActivity(navigation, 'CreateCanvasActivity')}
+        >
+          <View
+            style={styles.startActivityContainerSendItemPhoto}
+          >
+            <MaterialCommunityIcons
+              name="draw"
+              size={50}
+              color="rgb(255, 255, 255)"
+            />
+          </View>
+          <Text
+            style={styles.startActivityContainerSendItemLabel}
+          >
+            {
+              'Прошлый'
+            }
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.startActivityContainerDrawItem}
+          onPress={() => goToActivity(navigation, 'GalleryActivity')}
+        >
+          <View
+            style={styles.startActivityContainerSendItemPhoto}
+          >
+            <Ionicons name="attach" size={50} color="rgb(255, 255, 255)" />
+          </View>
+          <Text
+            style={styles.startActivityContainerSendItemLabel}
+          >
+            {
+              'Моя галерея'
+            }
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View>
+        <Button
+          title="Библиотека Softtrack Графический редактор"
+        />
+      </View>
+      <Text
+        style={styles.startActivityContainerSendLabel}
+      >
+        Отправить Работу
+      </Text>
+      <View
+        style={styles.startActivityContainerSend}
+      >
+        <View
+          style={styles.startActivityContainerSendItem}
+        >
+          <View
+            style={styles.startActivityContainerSendItemPhoto}
+          >
+            <Ionicons name="attach" size={50} color="rgb(255, 255, 255)" />
+          </View>
+          <Text
+            style={styles.startActivityContainerSendItemLabel}
+          >
+            {
+              'Отправить\nработу'
+            }
+          </Text>
+        </View>
+        <View
+          style={styles.startActivityContainerSendItem}
+        >
+          <View
+            style={styles.startActivityContainerSendItemPhoto}
+          >
+            <Feather
+              name="award"
+              size={50}
+              color="rgb(255, 255, 255)"
+            />
+          </View>
+          <Text
+            style={styles.startActivityContainerSendItemLabel}
+          >
+            {
+              'Примите\nучастие в\nконкурсе'
+            }
+          </Text>
+        </View>
+        <View
+          style={styles.startActivityContainerSendItem}
+        >
+          <View
+            style={styles.startActivityContainerSendItemPhoto}
+          >
+            <Ionicons name="attach" size={50} color="rgb(255, 255, 255)" />
+          </View>
+          <Text
+            style={styles.startActivityContainerSendItemLabel}
+          >
+            {
+              'Всеобщее\'ы\nискусство'
+            }
+          </Text>
+        </View>
+      </View>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   toolBar: {
     paddingTop: 0,
@@ -1252,5 +2012,85 @@ const styles = StyleSheet.create({
   },
   layerAsideItem: {
     marginHorizontal: 10
+  },
+  gridViewContextMenuItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%'
+  },
+  galleryActivityContainerItem: {
+    width: '50%'
+  },
+  galleryActivityContainerItemFooter: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'flex-end'
+  },
+  galleryActivityContainerItemFooterElement: {
+    marginHorizontal: 15
+  },
+  startActivityContainerDrawLabel: {
+    fontSize: 24
+  },
+  startActivityContainerSendLabel: {
+    fontSize: 24
+  },
+  startActivityContainerSend: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-around'
+  },
+  startActivityContainerSendItem: {
+    padding: 10,
+    width: 125,
+    backgroundColor: 'rgb(255, 0, 0)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center'
+  },
+  startActivityContainerSendItemPhoto: {
+
+  },
+  startActivityContainerSendItemLabel: {
+    color: 'rgb(255, 255, 255)',
+    textAlign: 'center'
+  },
+  startActivityContainerDrawItem: {
+    padding: 10,
+    width: 125,
+    backgroundColor: 'rgb(0, 100, 255)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center'    
+  },
+  createCanvasActivityContainer: {
+
+  },
+  createCanvasActivityContainerHeader: {
+    fontSize: 20
+  },
+  createCanvasActivityContainerRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  createCanvasActivityContainerRowAside: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  createCanvasActivityContainerRowAsideHeightLabel: {
+
+  },
+
+  createCanvasActivityContainerRowAsideDpiLabel: {
+
+  },
+  createCanvasActivityContainerRowEditBtn: {
+
+  },
+  createCanvasActivityContainerCreateBtn: {
+    width: '75%'
   }
 })

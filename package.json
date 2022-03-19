@@ -10,9 +10,12 @@
   },
   "dependencies": {
     "@react-native-community/slider": "^4.2.1",
+    "@react-navigation/native": "^6.0.8",
+    "@react-navigation/native-stack": "^6.5.0",
     "array-to-image": "^1.0.0",
     "expo": "~44.0.2",
     "expo-2d-context": "^0.0.3",
+    "expo-file-system": "^13.1.4",
     "expo-splash-screen": "~0.14.1",
     "expo-status-bar": "~1.2.0",
     "react": "17.0.1",
@@ -21,10 +24,14 @@
     "react-native-canvas": "^0.1.38",
     "react-native-check-box": "^2.1.7",
     "react-native-color-picker": "^0.6.0",
+    "react-native-fetch-blob": "^0.10.8",
     "react-native-material-menu": "^2.0.0",
     "react-native-paper": "^4.11.2",
     "react-native-select-dropdown": "^1.8.0",
-    "react-native-web": "0.17.1"
+    "react-native-web": "0.17.1",
+    "rn-fetch-blob": "github:joltup/rn-fetch-blob#master",
+    "text-encoding": "^0.7.0",
+    "text-encoding-polyfill": "^0.6.7"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9"
