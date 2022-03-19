@@ -4,7 +4,9 @@ import Canvas from 'react-native-canvas'
 import { FontAwesome5, Entypo, Fontisto, MaterialCommunityIcons, MaterialIcons, Ionicons, Foundation, Feather, SimpleLineIcons, FontAwesome } from '@expo/vector-icons'
 import {
   Checkbox,
-  Dialog, TextInput
+  Dialog,
+  TextInput,
+  RadioButton
 } from 'react-native-paper'
 import SelectDropdown from 'react-native-select-dropdown'
 import Slider from '@react-native-community/slider'
@@ -173,8 +175,12 @@ export function GalleryActivity() {
   )
 }
 
-export function MainActivity() {
+export function MainActivity({ navigation, route }) {
   
+  const { width, height, dpi, paperSize, backgroundColor } = route.params
+
+  console.log(`width: ${width}, height: ${height}, dpi: ${dpi}, paperSize: ${paperSize}, backgroundColor: ${backgroundColor}`)
+
   const [ctx, setCtx] = useState(null)
   
   const [tool, setTool] = useState('pen')
@@ -411,8 +417,11 @@ export function MainActivity() {
     try {
       if (!isInit) {
         setCtx(canvas.getContext('2d'))
-        canvas.width = Dimensions.get('window').width
-        canvas.height = Dimensions.get('window').height - 250
+        // canvas.width = Dimensions.get('window').width
+        // canvas.height = Dimensions.get('window').height - 250
+
+        canvas.width = Number.parseInt(width)
+        canvas.height = Number.parseInt(height)
         
         // ctx.fillStyle = 'rgb(0, 0, 0)'
         // ctx.fillRect(0, 0, 1000, 1000)
@@ -460,8 +469,10 @@ export function MainActivity() {
     } else if (isCurveTool) {
       console.log('открываем кривую')
       const nativeEvent = event.nativeEvent
-      const x = nativeEvent.pageX
-      const y = nativeEvent.pageY
+      // const x = nativeEvent.pageX
+      // const y = nativeEvent.pageY
+      const x = nativeEvent.locationX
+      const y = nativeEvent.locationY
       setInitialTouch({
         x,
         y
@@ -472,14 +483,18 @@ export function MainActivity() {
     } else if (isSelectTool) {
       console.log('выбираю кривую')
       const nativeEvent = event.nativeEvent
-      const x = nativeEvent.pageX
-      const y = nativeEvent.pageY
+      // const x = nativeEvent.pageX
+      // const y = nativeEvent.pageY
+      const x = nativeEvent.locationX
+      const y = nativeEvent.locationY
       
     } else if (isShapeTool) {
       console.log('открываем кривую')
       const nativeEvent = event.nativeEvent
-      const x = nativeEvent.pageX
-      const y = nativeEvent.pageY
+      // const x = nativeEvent.pageX
+      // const y = nativeEvent.pageY
+      const x = nativeEvent.locationX
+      const y = nativeEvent.locationY
       setInitialTouch({
         x,
         y
@@ -490,8 +505,10 @@ export function MainActivity() {
     } else if (isTextTool) {
       console.log('добавляем положение для текста')
       const nativeEvent = event.nativeEvent
-      const x = nativeEvent.pageX
-      const y = nativeEvent.pageY
+      // const x = nativeEvent.pageX
+      // const y = nativeEvent.pageY
+      const x = nativeEvent.locationX
+      const y = nativeEvent.locationY
       setInitialTouch({
         x,
         y
@@ -500,6 +517,7 @@ export function MainActivity() {
   }
 
   const onCanvasTouchMove = async (event) => {
+    console.log(`Object.keys(event.nativeEvent): ${Object.keys(event.nativeEvent)}`)
     const isPenTool = tool === 'pen'
     const isEraserTool = tool === 'eraser'
     const isHandTool = tool === 'hand'
@@ -511,22 +529,28 @@ export function MainActivity() {
     const isTextTool = tool === 'text'
     if (isPenTool) {
       const nativeEvent = event.nativeEvent
-      const x = nativeEvent.pageX
-      const y = nativeEvent.pageY
+      // const x = nativeEvent.pageX
+      // const y = nativeEvent.pageY
+      const x = nativeEvent.locationX
+      const y = nativeEvent.locationY
       ctx.lineTo(x, y)
       ctx.stroke()
     } else if (isEraserTool) {
       const nativeEvent = event.nativeEvent
-      const x = nativeEvent.pageX
-      const y = nativeEvent.pageY
+      // const x = nativeEvent.pageX
+      // const y = nativeEvent.pageY
+      const x = nativeEvent.locationX
+      const y = nativeEvent.locationY
       ctx.lineTo(x, y)
       ctx.stroke()
     } else if (isHandTool) {
 
     } else if (isCurveTool) {
       const nativeEvent = event.nativeEvent
-      const x = nativeEvent.pageX
-      const y = nativeEvent.pageY
+      // const x = nativeEvent.pageX
+      // const y = nativeEvent.pageY
+      const x = nativeEvent.locationX
+      const y = nativeEvent.locationY
       ctx.clearRect(0, 0, 1000, 1000)
       const isPathCurve = curve === 'path'
       const isRectCurve = curve === 'rect'
@@ -547,8 +571,10 @@ export function MainActivity() {
       
     } else if (isShapeTool) {
       const nativeEvent = event.nativeEvent
-      const x = nativeEvent.pageX
-      const y = nativeEvent.pageY
+      // const x = nativeEvent.pageX
+      // const y = nativeEvent.pageY
+      const x = nativeEvent.locationX
+      const y = nativeEvent.locationY
       ctx.clearRect(0, 0, 1000, 1000)
       const isRectShape = shape === 'rect'
       const isOvalShape = shape === 'oval'
@@ -920,6 +946,7 @@ export function MainActivity() {
                 onTouchEnd={onCanvasTouchEnd}
               >
                 <Canvas
+                  style={{ backgroundColor: backgroundColor }}
                   ref={handleCanvas}
                 /> 
               </Pressable>
@@ -1753,6 +1780,57 @@ export function MainActivity() {
 
 export function CreateCanvasActivity({ navigation }) {
   
+  const [isCanvasCreateDialogVisible, setIsCanvasCreateDialogVisible] = useState(false)
+
+  const [createCanvasDialogSize, setCreateCanvasDialogSize] = useState('\n')
+  
+  const createCanvasDialogSizes = [
+    '\n',
+    'A4(210 * 297 мм)',
+    'A5(148 * 210 мм)',
+    'A6(105 * 148 мм)',
+    'B5(182 * 257 мм)',
+    'B6(128 * 182 мм)',
+    'Стикер ЛИНИЯ(x1)',
+    'Стикер ЛИНИЯ(x2)',
+    'Стикер ЛИНИЯ(x4)',
+    'Twitter',
+    'Заголовок Twitter',
+    'Значок Twitter',
+    'История(Персонажи)',
+    'История(Клип-арт)'
+  ]
+
+  const [isCreateCanvasDialogColorPickerVisible, setIsCreateCanvasDialogColorPickerVisible] = useState(false)
+
+  const [createCanvasDialogColorPickerTempColor, setCreateCanvasDialogColorPickerTempColor] = useState('')
+
+  const [createCanvasDialogColorPickerColor, setCreateCanvasDialogColorPickerColor] = useState('')
+
+  const backgroundColors = [
+    'Спецификация цвета',
+    'Очистить'
+  ]
+
+  const [backgroundColor, setBackgroundColor] = useState({
+    checked: 'Спецификация цвета'
+  })
+
+  const [createCanvasDialogWidthContent, setCreateCanvasDialogWidthContent] = useState('1007')
+
+  const [createCanvasDialogHeightContent, setCreateCanvasDialogHeightContent] = useState('1414')
+
+  const [createCanvasDialogDpiContent, setCreateCanvasDialogDpiContent] = useState('350')
+
+  const [createCanvasDialogWidthMeasure, setCreateCanvasDialogWidthMeasure] = useState('px')
+
+  const [createCanvasDialogHeightMeasure, setCreateCanvasDialogHeightMeasure] = useState('px')
+
+  const createCanvasDialogMeasures = [
+    'px',
+    'cm'
+  ]
+
   const goToActivity = (navigation, activityName, params = {}) => {
     navigation.navigate(activityName, params)
   }
@@ -1769,7 +1847,9 @@ export function CreateCanvasActivity({ navigation }) {
       <Text
         style={styles.createCanvasActivityContainerWidthLabel}
       >
-        Ширина 1007px
+        {
+          `Ширина ${createCanvasDialogWidthContent}${createCanvasDialogWidthMeasure}`
+        }
       </Text>
       <View
         style={styles.createCanvasActivityContainerRow}
@@ -1780,19 +1860,33 @@ export function CreateCanvasActivity({ navigation }) {
           <Text
             style={styles.createCanvasActivityContainerRowAsideHeightLabel}
           >
-            Высота 1414px
+            {
+              `Высота ${createCanvasDialogHeightContent}${createCanvasDialogHeightMeasure}`
+            }
           </Text>
           <Text
             style={styles.createCanvasActivityContainerRowAsideDpiLabel}
           >
-            точек на дюйм 350
+            {
+              `точек на дюйм ${createCanvasDialogDpiContent}`
+            }
           </Text>
         </View>
         <View
           style={styles.createCanvasActivityContainerRowEditBtn}
         >
           <Button
-            title="РЕДАКИРОВАТЬ"
+            title="РЕДАКТИРОВАТЬ"
+            onPress={() => {
+              // setCreateCanvasDialogWidthContent('1007')
+              // setCreateCanvasDialogHeightContent('1414')
+              // setCreateCanvasDialogDpiContent('350')
+              // setCreateCanvasDialogSize('\n')
+              // setBackgroundColor({ checked: backgroundColors[0] })
+              // setCreateCanvasDialogColorPickerTempColor('')
+              // setCreateCanvasDialogColorPickerColor('')
+              setIsCanvasCreateDialogVisible(true)
+            }}
           />
         </View>
       </View>
@@ -1801,9 +1895,197 @@ export function CreateCanvasActivity({ navigation }) {
       >
         <Button
           title="СОЗД"
-          onPress={() => goToActivity(navigation, 'MainActivity')}
+          onPress={() => {
+            if (backgroundColor === backgroundColors[1]) {
+              setCreateCanvasDialogColorPickerTempColor('transparent')
+            }
+            goToActivity(navigation, 'MainActivity', {
+              width: createCanvasDialogWidthContent,
+              height: createCanvasDialogHeightContent,
+              dpi: createCanvasDialogDpiContent,
+              paperSize: createCanvasDialogSize,
+              backgroundColor: createCanvasDialogColorPickerTempColor
+            })
+          }}
         />
       </View>
+      <Dialog
+        visible={isCanvasCreateDialogVisible}
+        onDismiss={() => setIsCanvasCreateDialogVisible(false)}>
+        <Dialog.Title>          
+        </Dialog.Title>
+        <Dialog.Content>
+          <Text>
+            Ширина
+          </Text>
+          <View
+            style={styles.dialogContentRow}
+          >
+            <TextInput  
+              width={200}
+              value={createCanvasDialogWidthContent}
+              multiline
+              onChangeText={(value) => setCreateCanvasDialogWidthContent(value)}
+            />
+            <SelectDropdown
+              defaultButtonText={'px'}
+              data={createCanvasDialogMeasures}
+              onSelect={(selectedItem, index) => {
+                setCreateCanvasDialogWidthMeasure(selectedItem)
+              }}
+              buttonTextAfterSelection={(selectedItem, index) => {
+                return selectedItem
+              }}
+              rowTextForSelection={(item, index) => {
+                return item
+              }}
+              buttonStyle={styles.miniDropdown}
+              renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+            />
+          </View>
+          <Text>
+            Высота
+          </Text>
+          <View
+            style={styles.dialogContentRow}
+          >
+            <TextInput
+              width={200}
+              value={createCanvasDialogHeightContent}
+              multiline
+              onChangeText={(value) => setCreateCanvasDialogHeightContent(value)}
+            />
+            <SelectDropdown
+              buttonStyle={styles.miniDropdown}
+              defaultButtonText={'px'}
+              data={createCanvasDialogMeasures}
+              onSelect={(selectedItem, index) => {
+                setCreateCanvasDialogHeightMeasure(selectedItem)
+              }}
+              buttonTextAfterSelection={(selectedItem, index) => {
+                return selectedItem
+              }}
+              rowTextForSelection={(item, index) => {
+                return item
+              }}
+              renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+            />
+          </View>
+          <Text>
+            точек на дюйм
+          </Text>
+          <TextInput
+            width={200}
+            value={createCanvasDialogDpiContent}
+            multiline
+            onChangeText={(value) => setCreateCanvasDialogDpiContent(value)}
+          />
+          <Text>
+            Размер бумаги
+          </Text>
+          <SelectDropdown
+            defaultButtonText={'\n'}
+            data={createCanvasDialogSizes}
+            onSelect={(selectedItem, index) => {
+              setCreateCanvasDialogSize(selectedItem)
+            }}
+            buttonTextAfterSelection={(selectedItem, index) => {
+              return selectedItem
+            }}
+            rowTextForSelection={(item, index) => {
+              return item
+            }}
+            style={styles.addAmountActivityContainerDropDown}
+            renderDropdownIcon={() => <Entypo name="chevron-down" size={24} color="black" />}
+          />
+          <Text>
+            Цвет фона
+          </Text>
+          <View
+            style={styles.dialogContentRow}
+          >
+            <View
+              style={styles.dialogContentRow}
+            >
+              <RadioButton
+                value={backgroundColors[0]}
+                label={backgroundColors[0]}
+                status={backgroundColor.checked === backgroundColors[0] ? 'checked' : 'unchecked'}
+                onPress={() => { setBackgroundColor({ checked: backgroundColors[0] }) }}
+              />
+              <Text>
+                Спецификация цвета
+              </Text>
+            </View>
+            <View
+              style={styles.dialogContentRow}
+            >
+              <RadioButton
+                value={backgroundColors[1]}
+                label={backgroundColors[1]}
+                status={backgroundColor.checked === backgroundColors[1] ? 'checked' : 'unchecked'}
+                onPress={() => { setBackgroundColor({ checked: backgroundColors[1] }) }}
+              />
+              <Text>
+                Очистить
+              </Text>
+            </View>
+          </View>
+          <MaterialCommunityIcons
+            name="rectangle"
+            size={24}
+            color="black"
+            onPress={() => setIsCreateCanvasDialogColorPickerVisible(true)}
+          />
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button
+            title="ОТМЕНА"
+            onPress={() => {
+              setIsCanvasCreateDialogVisible(false)
+            }}
+          />
+          <Button
+            title="ОК"
+            onPress={() => {
+              setIsCanvasCreateDialogVisible(false)
+            }}
+          />
+        </Dialog.Actions>
+      </Dialog>
+      <Dialog
+        visible={isCreateCanvasDialogColorPickerVisible}
+        onDismiss={() => setIsCreateCanvasDialogColorPickerVisible(false)}>
+        <Dialog.Title>
+          
+        </Dialog.Title>
+        <Dialog.Content>
+          <View
+            style={styles.colorPickerWrap}
+          >
+
+          </View>
+          <ColorPicker
+            onColorSelected={color => setCreateCanvasDialogColorPickerTempColor(color)}
+            style={styles.colorpiker}
+          />
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button
+            title="ОТМЕНА"
+            onPress={() => {
+              setIsCreateCanvasDialogColorPickerVisible(false)
+            }}
+          />
+          <Button
+            title="ОК"
+            onPress={() => {
+              setCreateCanvasDialogColorPickerColor(createCanvasDialogColorPickerTempColor)
+              setIsCreateCanvasDialogColorPickerVisible(false)
+            }}
+          />
+        </Dialog.Actions>
+      </Dialog>
     </View>
   )
 }
@@ -2066,7 +2348,7 @@ const styles = StyleSheet.create({
     alignItems: 'center'    
   },
   createCanvasActivityContainer: {
-
+    height: '100%'
   },
   createCanvasActivityContainerHeader: {
     fontSize: 20
@@ -2088,9 +2370,13 @@ const styles = StyleSheet.create({
 
   },
   createCanvasActivityContainerRowEditBtn: {
-
+    zIndex: 0
   },
   createCanvasActivityContainerCreateBtn: {
-    width: '75%'
+    width: '75%',
+    zIndex: 0
+  },
+  miniDropdown: {
+    width: 85
   }
 })
