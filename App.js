@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react'
-import { StyleSheet, SafeAreaView , View, ScrollView, Text, Pressable, Dimensions, Button, Keyboard, ToastAndroid, DrawerLayoutAndroid, TouchableOpacity, Image, Environment } from 'react-native'
+import React, { useEffect, useState, useRef, createRef } from 'react'
+import { StyleSheet, SafeAreaView , View, ScrollView, Text, Pressable, Dimensions, Button, Keyboard, ToastAndroid, DrawerLayoutAndroid, TouchableOpacity, Image, BackHandler, Modal, Camera } from 'react-native'
 import Canvas from 'react-native-canvas'
 import { FontAwesome5, Entypo, Fontisto, MaterialCommunityIcons, MaterialIcons, Ionicons, Foundation, Feather, SimpleLineIcons, FontAwesome } from '@expo/vector-icons'
 import {
@@ -21,8 +21,23 @@ import * as encoding from 'text-encoding'
 import * as FileSystem from 'expo-file-system'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
+// import { TapGestureHandler, RotationGestureHandler, gestureHandlerRootHOC } from 'react-native-gesture-handler'
+// import {GestureHandler} from 'expo'
+import Gestures from 'react-native-easy-gestures'
+// const { Swipeable } = GestureHandler
+import Draggable from 'react-native-draggable'
+import { manipulate, manipulateAsync, FlipType, SaveFormat } from 'expo-image-manipulator'
+import * as MediaLibrary from 'expo-media-library'
+import { captureRef } from 'react-native-view-shot'
 
 const Stack = createNativeStackNavigator()
+
+// const ExampleWithHoc = gestureHandlerRootHOC(() => (
+//     <View>
+//       <DraggableBox />
+//     </View>
+//   )
+// )
 
 export default function App() {
   
@@ -261,6 +276,20 @@ export function MainActivity({ navigation, route }) {
 
   const [primaryColor, setPrimaryColor] = useState('')
 
+  const [isDetectChanges, setIsDetectChanges] = useState(false)
+
+  const [isToolbarVisible, setIsToolbarVisible] = useState(true)
+
+  const [canvasRotation, setCanvasRotation] = useState(0)
+
+  const [isDraggableEnabled, setIsDraggableEnabled] = useState(false)
+
+  const [isAcceptExitDialogVisible, setIsAcceptExitDialogVisible] = useState(false)
+
+  const goToActivity = (navigation, activityName, params = {}) => {
+    navigation.navigate(activityName, params)
+  }
+
   const palleteNavigationView = () => (
     <View style={{
       padding: 25,
@@ -297,13 +326,18 @@ export function MainActivity({ navigation, route }) {
     },
   ])
 
+  const [isBurgerContextMenuVisible, setIsBurgerContextMenuVisible] = useState(false)
+  
   const [isSelectionContextMenuVisible, setIsSelectionContextMenuVisible] = useState(false)
 
+  
   const [isEditContextMenuVisible, setIsEditContextMenuVisible] = useState(false)
 
   const [isToggleOrientationContextMenuVisible, setIsToggleOrientationContextMenuVisible] = useState(false)
 
   const [imgUri, setImgUri] = useState('')
+
+  const [isGesturesEnabled, setIsGesturesEnabled] = useState(false)
 
   const getActiveLayerStyle = (layerIndex) => {
     if (activeLayer === layerIndex) {
@@ -413,13 +447,13 @@ export function MainActivity({ navigation, route }) {
     ToastAndroid.show(msg, ToastAndroid.LONG)
   }
 
+  var container = useRef(null)
+
   const handleCanvas = async (canvas) => {
     try {
       if (!isInit) {
         setCtx(canvas.getContext('2d'))
-        // canvas.width = Dimensions.get('window').width
-        // canvas.height = Dimensions.get('window').height - 250
-
+        
         canvas.width = Number.parseInt(width)
         canvas.height = Number.parseInt(height)
         
@@ -435,6 +469,16 @@ export function MainActivity({ navigation, route }) {
         // const dataUrl = getDataUrlFromArr(imageData.data, canvas.width, canvas.height)
         // console.log(`dataUrl: ${dataUrl}`)
         // await setImgUri(dataUrl)
+
+        BackHandler.addEventListener('hardwareBackPress', function () {
+          if (isToolbarVisible) {
+            setIsToolbarVisible(false)
+            return true
+          } else {
+            setIsAcceptExitDialogVisible(true)
+            return true
+          }
+        })
 
         setIsInit(true)
       }
@@ -517,7 +561,7 @@ export function MainActivity({ navigation, route }) {
   }
 
   const onCanvasTouchMove = async (event) => {
-    console.log(`Object.keys(event.nativeEvent): ${Object.keys(event.nativeEvent)}`)
+    // console.log(`Object.keys(event.nativeEvent): ${Object.keys(event.nativeEvent)}`)
     const isPenTool = tool === 'pen'
     const isEraserTool = tool === 'eraser'
     const isHandTool = tool === 'hand'
@@ -527,70 +571,72 @@ export function MainActivity({ navigation, route }) {
     const isFillTool = tool === 'fill'
     const isGradientTool = tool === 'gradient'
     const isTextTool = tool === 'text'
-    if (isPenTool) {
-      const nativeEvent = event.nativeEvent
-      // const x = nativeEvent.pageX
-      // const y = nativeEvent.pageY
-      const x = nativeEvent.locationX
-      const y = nativeEvent.locationY
-      ctx.lineTo(x, y)
-      ctx.stroke()
-    } else if (isEraserTool) {
-      const nativeEvent = event.nativeEvent
-      // const x = nativeEvent.pageX
-      // const y = nativeEvent.pageY
-      const x = nativeEvent.locationX
-      const y = nativeEvent.locationY
-      ctx.lineTo(x, y)
-      ctx.stroke()
-    } else if (isHandTool) {
+    if (!isGesturesEnabled) {
+      if (isPenTool) {
+        const nativeEvent = event.nativeEvent
+        // const x = nativeEvent.pageX
+        // const y = nativeEvent.pageY
+        const x = nativeEvent.locationX
+        const y = nativeEvent.locationY
+        ctx.lineTo(x, y)
+        ctx.stroke()
+      } else if (isEraserTool) {
+        const nativeEvent = event.nativeEvent
+        // const x = nativeEvent.pageX
+        // const y = nativeEvent.pageY
+        const x = nativeEvent.locationX
+        const y = nativeEvent.locationY
+        ctx.lineTo(x, y)
+        ctx.stroke()
+      } else if (isHandTool) {
 
-    } else if (isCurveTool) {
-      const nativeEvent = event.nativeEvent
-      // const x = nativeEvent.pageX
-      // const y = nativeEvent.pageY
-      const x = nativeEvent.locationX
-      const y = nativeEvent.locationY
-      ctx.clearRect(0, 0, 1000, 1000)
-      const isPathCurve = curve === 'path'
-      const isRectCurve = curve === 'rect'
-      const isOvalCurve = curve === 'oval'
-      const isPolygoneCurve = curve === 'polygone'
-      if (isRectCurve) {
-        ctx.strokeRect(initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
-      } else if (isOvalCurve) {
-        // ctx.arc(initialTouch.x, initialTouch.y, 50, 0, 2 * Math.PI, false)
-        drawEllipse(ctx, initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
-        ctx.stroke()
-      } else if (isPolygoneCurve) {
-        ctx.moveTo(curvePoints[0].x, curvePoints[0].y)
-        ctx.quadraticCurveTo(curvePoints[1].x, curvePoints[1].y, curvePoints[2].y, curvePoints[2].y)
-        ctx.stroke()
+      } else if (isCurveTool) {
+        const nativeEvent = event.nativeEvent
+        // const x = nativeEvent.pageX
+        // const y = nativeEvent.pageY
+        const x = nativeEvent.locationX
+        const y = nativeEvent.locationY
+        ctx.clearRect(0, 0, 1000, 1000)
+        const isPathCurve = curve === 'path'
+        const isRectCurve = curve === 'rect'
+        const isOvalCurve = curve === 'oval'
+        const isPolygoneCurve = curve === 'polygone'
+        if (isRectCurve) {
+          ctx.strokeRect(initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
+        } else if (isOvalCurve) {
+          // ctx.arc(initialTouch.x, initialTouch.y, 50, 0, 2 * Math.PI, false)
+          drawEllipse(ctx, initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
+          ctx.stroke()
+        } else if (isPolygoneCurve) {
+          ctx.moveTo(curvePoints[0].x, curvePoints[0].y)
+          ctx.quadraticCurveTo(curvePoints[1].x, curvePoints[1].y, curvePoints[2].y, curvePoints[2].y)
+          ctx.stroke()
+        }
+      } else if (isSelectTool) {
+        
+      } else if (isShapeTool) {
+        const nativeEvent = event.nativeEvent
+        // const x = nativeEvent.pageX
+        // const y = nativeEvent.pageY
+        const x = nativeEvent.locationX
+        const y = nativeEvent.locationY
+        ctx.clearRect(0, 0, 1000, 1000)
+        const isRectShape = shape === 'rect'
+        const isOvalShape = shape === 'oval'
+        const isPolygoneShape = shape === 'polygone'
+        if (isRectShape) {
+          ctx.fillRect(initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
+        } else if (isOvalShape) {
+          drawEllipse(ctx, initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
+          ctx.fill()
+        } else if (isPolygoneShape) {
+          ctx.moveTo(curvePoints[0].x, curvePoints[0].y)
+          ctx.quadraticCurveTo(curvePoints[1].x, curvePoints[1].y, curvePoints[2].y, curvePoints[2].y)
+          ctx.fill()
+        }
+      } else if (isFillTool) {
+        ctx.fillRect(0, 0, 1000, 1000)
       }
-    } else if (isSelectTool) {
-      
-    } else if (isShapeTool) {
-      const nativeEvent = event.nativeEvent
-      // const x = nativeEvent.pageX
-      // const y = nativeEvent.pageY
-      const x = nativeEvent.locationX
-      const y = nativeEvent.locationY
-      ctx.clearRect(0, 0, 1000, 1000)
-      const isRectShape = shape === 'rect'
-      const isOvalShape = shape === 'oval'
-      const isPolygoneShape = shape === 'polygone'
-      if (isRectShape) {
-        ctx.fillRect(initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
-      } else if (isOvalShape) {
-        drawEllipse(ctx, initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
-        ctx.fill()
-      } else if (isPolygoneShape) {
-        ctx.moveTo(curvePoints[0].x, curvePoints[0].y)
-        ctx.quadraticCurveTo(curvePoints[1].x, curvePoints[1].y, curvePoints[2].y, curvePoints[2].y)
-        ctx.fill()
-      }
-    } else if (isFillTool) {
-      ctx.fillRect(0, 0, 1000, 1000)
     }
   }
 
@@ -666,12 +712,44 @@ export function MainActivity({ navigation, route }) {
   }
 
   const saveFile = async (content) => {
-    const savedFileName = 'extended_graphic_editor_export.png'
-    // let fileUri = FileSystem.cacheDirectory + savedFileName
+    
+    // const savedFileName = 'extended_graphic_editor_export.png'
+    const savedFileName = 'extended_graphic_editor_image_export.png'
     let fileUri = FileSystem.cacheDirectory + savedFileName
-    console.log(`create fileUri: ${fileUri}`)
+    // console.log(`create fileUri: ${fileUri}`)
     await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 })
+    // await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.Base64 })
+
+    // const manipResult = await manipulateAsync(
+    //   fileUri,
+    //   [
+    //     { rotate: 90 },
+    //     { flip: FlipType.Vertical },
+    //   ],
+    //   { compress: 1, format: SaveFormat.PNG }
+    // )
+
+    // setTimeout(() => {
+    //   manipulate(
+    //     fileUri,
+    //     [
+    //       { rotate: 90 },
+    //       { flip: FlipType.Vertical },
+    //     ],
+    //     { compress: 1, format: SaveFormat.PNG }
+    //   )
+    //   showToast('Сохранение завершено')
+    // }, 5000)
     showToast('Сохранение завершено')
+
+    const isCanCreate = await MediaLibrary.requestPermissionsAsync()
+    if (isCanCreate) {
+      let result = await captureRef(container, {
+        format: 'png'
+      })
+      MediaLibrary.createAssetAsync(result)
+    }
+
   }
 
   function drawEllipse(ctx, x, y, w, h) {
@@ -718,108 +796,106 @@ export function MainActivity({ navigation, route }) {
             renderNavigationView={materialsNavigationView}
           >
             <SafeAreaView>
-              {/* <Image
-                source={imgUri}
-                style={{
-                  width: 150,
-                  height: 150
-                }}
-              /> */}
-              <ScrollView
-                horizontal={true}
-                style={styles.toolBar}
-              >
-                <FontAwesome5
-                  name="pen"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент ручка')
-                    setTool('pen')
-                  }}
-                />
-                <Entypo
-                  name="eraser"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент ластик')
-                    setTool('eraser')
-                  }}
-                />
-                <Entypo
-                  name="hand"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент рука')
-                    setTool('hand')
-                  }}
-                />
-                <MaterialCommunityIcons
-                  name="rectangle-outline"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент кривая')
-                    setTool('curve')
-                  }}
-                />
-                <Fontisto
-                  name="cursor"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент Выбор')
-                    setTool('select')
-                  }}
-                />
-                <Fontisto
-                  name="rectangle"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент фигура')
-                    setTool('shape')
-                  }}
-                />
-                <Ionicons
-                  name="md-color-fill"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент заливка')
-                    setTool('fill')
-                  }}
-                />
-                <MaterialIcons
-                  name="gradient"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент градиент')
-                    setTool('gradient')
-                  }}
-                />
-                <Ionicons
-                  name="text"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент текст')
-                    setTool('text')
-                  }}
-                />
-              </ScrollView>
+              {
+                (isToolbarVisible) ?
+                  <ScrollView
+                    horizontal={true}
+                    style={styles.toolBar}
+                  >
+                    <FontAwesome5
+                      name="pen"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => {
+                        console.log('выбираю инстумент ручка')
+                        setTool('pen')
+                      }}
+                    />
+                    <Entypo
+                      name="eraser"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => {
+                        console.log('выбираю инстумент ластик')
+                        setTool('eraser')
+                      }}
+                    />
+                    <Entypo
+                      name="hand"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => {
+                        console.log('выбираю инстумент рука')
+                        setTool('hand')
+                      }}
+                    />
+                    <MaterialCommunityIcons
+                      name="rectangle-outline"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => {
+                        console.log('выбираю инстумент кривая')
+                        setTool('curve')
+                      }}
+                    />
+                    <Fontisto
+                      name="cursor"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => {
+                        console.log('выбираю инстумент Выбор')
+                        setTool('select')
+                      }}
+                    />
+                    <Fontisto
+                      name="rectangle"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => {
+                        console.log('выбираю инстумент фигура')
+                        setTool('shape')
+                      }}
+                    />
+                    <Ionicons
+                      name="md-color-fill"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => {
+                        console.log('выбираю инстумент заливка')
+                        setTool('fill')
+                      }}
+                    />
+                    <MaterialIcons
+                      name="gradient"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => {
+                        console.log('выбираю инстумент градиент')
+                        setTool('gradient')
+                      }}
+                    />
+                    <Ionicons
+                      name="text"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => {
+                        console.log('выбираю инстумент текст')
+                        setTool('text')
+                      }}
+                    />
+                  </ScrollView>
+                  :
+                    <View></View>
+                }
               {
                 (tool === 'pen' || tool === 'eraser') ?
                   <View>
@@ -934,89 +1010,148 @@ export function MainActivity({ navigation, route }) {
 
                   </View>
               }
-              <Pressable
-                style={[styles.canvas,
-                  {
-                  borderTopWidth: 1,
-                  borderTopColor: 'red'
-                }
-              ]}
-                onTouchStart={onCanvasTouchStart}
-                onTouchMove={onCanvasTouchMove}
-                onTouchEnd={onCanvasTouchEnd}
-              >
-                <Canvas
-                  style={{ backgroundColor: backgroundColor }}
-                  ref={handleCanvas}
-                /> 
-              </Pressable>
-              <View
-                style={styles.toolBarPreFooter}
-              >
-                <Ionicons
-                  name="arrow-undo-sharp"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarPreFooterItem}
-                />
-                <Ionicons
-                  name="arrow-redo-sharp"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarPreFooterItem}
-                />
-                <MaterialCommunityIcons
-                  name="format-color-highlight"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarPreFooterItem}
-                />
-                <FontAwesome5
-                  name="pen"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarPreFooterItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент ручка')
-                    setTool('pen')
+                {/* <Modal> */}
+                {/* <ExampleWithHoc> */}
+                {/* <TapGestureHandler>
+                <RotationGestureHandler
+                  onChange={(event) => {
+                    console.log(`event: ${event}`)
                   }}
-                />
-                <Entypo
-                  name="eraser"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarPreFooterItem}
-                  onPress={() => {
-                    console.log('выбираю инстумент ластик')
-                    setTool('eraser')
+                > */}
+                <Gestures
+                  draggable={isGesturesEnabled}
+                  rotatable={isGesturesEnabled}
+                  scalable={isGesturesEnabled}
+                  onChange={(event, styles) => {
+                    
                   }}
-                />
-                <SimpleLineIcons
-                  name="share-alt"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarPreFooterItem}
-                />
-                <View
-                  style={styles.toolBarPreFooterItem}
+                  onMultyTouchStart={(event, styles) => {
+                    
+                  }}
+                  onMultyTouchEnd={(event, styles) => {
+                    
+                  }}
+                  onMultyTouchChange={(event, styles) => {
+                    const nativeEvent = event.nativeEvent
+                    const touches = nativeEvent.touches
+                    const countTouches = touches.length
+                    const isMultiTouch = countTouches === 2
+                    if (isMultiTouch) {
+                      setIsGesturesEnabled(true)
+                    } else {
+                      setIsGesturesEnabled(false)
+                    }
+                  }}
                 >
-                  <Button
-                    title="Сохр."
-                    onPress={async () => {
-                      const uint8array = await ctx.getImageData(60, 60, 200, 100)
-                      const string = new encoding.TextDecoder('utf-8').decode(uint8array)
-                      console.log(`string: ${string}`)
-                      saveFile(string)
+                  <Pressable
+                    style={[styles.canvas,
+                      {
+                      // borderTopWidth: 1,
+                      // borderTopColor: 'red'
+                    }
+                    ]}
+                    onTouchStart={onCanvasTouchStart}
+                    onTouchMove={onCanvasTouchMove}
+                    onTouchEnd={onCanvasTouchEnd}
+                    ref={container}
+                  >
+                    <Canvas
+                      style={{ backgroundColor: backgroundColor }}
+                      ref={handleCanvas}
+                    />
+                  </Pressable>
+                </Gestures>
+                {/* </RotationGestureHandler> 
+                </TapGestureHandler> */}
+              {/* </ExampleWithHoc> */}
+              {/* </Modal> */}
+              <Draggable
+                x={0}
+                y={510}
+                disabled={!isDraggableEnabled}
+              >
+                <View
+                  style={styles.toolBarPreFooter}
+                >
+                  <Ionicons
+                    name="arrow-undo-sharp"
+                    size={24}
+                    color="black"
+                    style={styles.toolBarPreFooterItem}
+                  />
+                  <Ionicons
+                    name="arrow-redo-sharp"
+                    size={24}
+                    color="black"
+                    style={styles.toolBarPreFooterItem}
+                  />
+                  <MaterialCommunityIcons
+                    name="format-color-highlight"
+                    size={24}
+                    color="black"
+                    style={styles.toolBarPreFooterItem}
+                  />
+                  <FontAwesome5
+                    name="pen"
+                    size={24}
+                    color="black"
+                    style={styles.toolBarPreFooterItem}
+                    onPress={() => {
+                      console.log('выбираю инстумент ручка')
+                      setTool('pen')
                     }}
                   />
+                  <Entypo
+                    name="eraser"
+                    size={24}
+                    color="black"
+                    style={styles.toolBarPreFooterItem}
+                    onPress={() => {
+                      console.log('выбираю инстумент ластик')
+                      setTool('eraser')
+                    }}
+                  />
+                  <SimpleLineIcons
+                    name="share-alt"
+                    size={24}
+                    color="black"
+                    style={styles.toolBarPreFooterItem}
+                  />
+                  <View
+                    style={styles.toolBarPreFooterItem}
+                  >
+                    <Button
+                      title="Сохр."
+                      onPress={async () => {
+                        const uint8array = await ctx.getImageData(60, 60, 200, 100)
+                        const string = new encoding.TextDecoder('utf-8').decode(uint8array)
+                        // const blob = new Blob([uint8array], { type: "image/bmp" })
+                        // console.log(`blob: ${blob}`)
+                        // console.log(`string: ${string}`)
+                        saveFile(string)
+                        // blob.stream().then((value) => {
+                        //   console.log(`blobStream: ${value}`)
+                        //   saveFile(value)
+                        // })
+                        // blob.text().then((value) => {
+                        //   console.log(`blobData: ${value}`)
+                        //   saveFile(value)
+                        // })
+                        // const a = await blob.text()
+                        // saveFile(blob)
+                      }}
+                    />
+                  </View>
+                  <Ionicons
+                    name="apps-sharp"
+                    size={24}
+                    color="black"
+                    style={styles.toolBarPreFooterItem}
+                    onTouchStart={() => setIsDraggableEnabled(true)}
+                    onTouchEnd={() => setIsDraggableEnabled(false)}
+                  />
                 </View>
-                <Ionicons
-                  name="apps-sharp"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarPreFooterItem}
-                />
-              </View>
+              </Draggable>
               <View
                 style={styles.toolBarFooter}
               >
@@ -1025,7 +1160,114 @@ export function MainActivity({ navigation, route }) {
                   size={24}
                   color="black"
                   style={styles.toolBarFooterItem}
+                  onLongPress={() => setIsBurgerContextMenuVisible(true)}
                 />
+                <MaterialMenu.Menu
+                  onRequestClose={() => setIsBurgerContextMenuVisible(false)}
+                  visible={isBurgerContextMenuVisible}
+                >
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      Сохранить
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      Сохранить как
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      Экспорт PNG / JPG файлы
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      Настройки
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      Справка
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      Синхронизация
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      аннотирование
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      Start using sonar pen.
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      {
+                        'Калибровка гидролокатора\nпера'
+                      }
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      Войти
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                  <MaterialMenu.MenuItem
+                    onPress={() => {
+                      setIsBurgerContextMenuVisible(false)
+                    }}
+                  >
+                    <Text>
+                      Выход
+                    </Text>
+                  </MaterialMenu.MenuItem>
+                </MaterialMenu.Menu>
                 <Feather
                   name="edit"
                   size={24}
@@ -1096,8 +1338,13 @@ export function MainActivity({ navigation, route }) {
                       setIsEditContextMenuVisible(false)
                     }}
                   >
-                    <View
+                    <TouchableOpacity
                       style="gridViewContextMenuItem"
+                      onPress={async () => {
+                        setIsEditContextMenuVisible(false)
+                        setCanvasRotation(canvasRotation - 25)
+                        await ctx.rotate(canvasRotation)
+                      }}
                     >
                       <MaterialCommunityIcons
                         name="selection"
@@ -1107,15 +1354,20 @@ export function MainActivity({ navigation, route }) {
                       <Text>
                         Повернуть холст влево
                       </Text>
-                    </View>
+                    </TouchableOpacity>
                   </MaterialMenu.MenuItem>
                   <MaterialMenu.MenuItem
-                    onPress={() => {
+                    onPress={async () => {
                       setIsEditContextMenuVisible(false)
                     }}
                   >
-                    <View
+                    <TouchableOpacity
                       style="gridViewContextMenuItem"
+                      onPress={async () => {
+                        setIsEditContextMenuVisible(false)
+                        setCanvasRotation(canvasRotation + 25)
+                        await ctx.rotate(canvasRotation)
+                      }}
                     >
                       <MaterialCommunityIcons
                         name="selection"
@@ -1125,25 +1377,30 @@ export function MainActivity({ navigation, route }) {
                       <Text>
                         Повернуть холст
                       </Text>
-                    </View>
+                    </TouchableOpacity>
                   </MaterialMenu.MenuItem>
                   <MaterialMenu.MenuItem
                     onPress={() => {
                       setIsEditContextMenuVisible(false)
                     }}
                   >
-                    <View
+                    <TouchableOpacity
                       style="gridViewContextMenuItem"
                     >
                       <MaterialCommunityIcons
                         name="selection"
                         size={24}
                         color="black"
+                        onPress={async () => {
+                          setIsEditContextMenuVisible(false)
+                          setCanvasRotation(0)
+                          await ctx.rotate(canvasRotation)
+                        }}
                       />
                       <Text>
                         Повернуть холст по
                       </Text>
-                    </View>
+                    </TouchableOpacity>
                   </MaterialMenu.MenuItem>
                   <MaterialMenu.MenuItem
                     onPress={() => {
@@ -1427,12 +1684,79 @@ export function MainActivity({ navigation, route }) {
                     </View>
                   </MaterialMenu.MenuItem>
                 </MaterialMenu.Menu>
-                <MaterialCommunityIcons
-                  name="rectangle"
-                  size={24}
-                  color="black"
-                  style={styles.toolBarFooterItem}
-                />
+                {
+                  tool === 'pen' ?
+                    <FontAwesome5
+                      name="pen"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => setIsToolbarVisible(!isToolbarVisible)}
+                    />
+                  : tool === 'eraser' ?
+                    <Entypo
+                      name="eraser"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => setIsToolbarVisible(!isToolbarVisible)}
+                    />  
+                  : tool === 'hand' ?
+                    <Entypo
+                      name="hand"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => setIsToolbarVisible(!isToolbarVisible)}
+                    />
+                  : tool === 'curve' ?
+                    <MaterialCommunityIcons
+                      name="rectangle-outline"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => setIsToolbarVisible(!isToolbarVisible)}
+                    />  
+                  : tool === 'cursor' ?
+                    <Fontisto
+                      name="cursor"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => setIsToolbarVisible(!isToolbarVisible)}
+                    />
+                  : tool === 'shape' ?
+                    <Fontisto
+                      name="rectangle"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => setIsToolbarVisible(!isToolbarVisible)}
+                    />  
+                  : tool === 'fill' ?
+                    <Ionicons
+                      name="md-color-fill"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => setIsToolbarVisible(!isToolbarVisible)}
+                    />
+                  : tool === 'gradient' ?
+                    <MaterialIcons
+                      name="gradient"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => setIsToolbarVisible(!isToolbarVisible)}
+                    />
+                  : <Ionicons
+                      name="text"
+                      size={24}
+                      color="black"
+                      style={styles.toolBarItem}
+                      onPress={() => setIsToolbarVisible(!isToolbarVisible)}
+                    />
+                }
                 <Ionicons
                   name="color-palette"
                   size={24}
@@ -1766,6 +2090,35 @@ export function MainActivity({ navigation, route }) {
                     onPress={() => {
                       setIsTextToolDialogColorPickerOutlineVisible(false)
                       setTextToolDialogColorPickerTextOutlineColor(textToolDialogColorPickerTextOutlineTempColor)
+                    }}
+                  />
+                </Dialog.Actions>
+              </Dialog>
+              <Dialog
+                visible={isAcceptExitDialogVisible}
+                onDismiss={() => setIsAcceptExitDialogVisible(false)}>
+                <Dialog.Title>
+                  Вы закончили?
+                </Dialog.Title>
+                <Dialog.Content>
+                </Dialog.Content>
+                <Dialog.Actions>
+                  <Button
+                    title="Сохранить"
+                    onPress={() => {
+                      setIsAcceptExitDialogVisible(false)
+                    }}
+                  />
+                  <Button
+                    title="Закрыть без сохранения"
+                    onPress={() => {
+                      setIsAcceptExitDialogVisible(false)
+                    }}
+                  />
+                  <Button
+                    title="Отмена"
+                    onPress={() => {
+                      setIsAcceptExitDialogVisible(false)
                     }}
                   />
                 </Dialog.Actions>
