@@ -12,32 +12,17 @@ import SelectDropdown from 'react-native-select-dropdown'
 import Slider from '@react-native-community/slider'
 import { ColorPicker } from 'react-native-color-picker'
 import * as MaterialMenu from 'react-native-material-menu'
-import { getImgFromArr, getDataUrlFromArr } from 'array-to-image'
-// import 'text-encoding-polyfill'
 import * as encoding from 'text-encoding'
-// import RNFetchBlob from 'rn-fetch-blob'
-// import RNFetchBlob from 'react-native-fetch-blob'
-// var RNFetchBlob = require('rn-fetch-blob').default
 import * as FileSystem from 'expo-file-system'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-// import { TapGestureHandler, RotationGestureHandler, gestureHandlerRootHOC } from 'react-native-gesture-handler'
-// import {GestureHandler} from 'expo'
 import Gestures from 'react-native-easy-gestures'
-// const { Swipeable } = GestureHandler
 import Draggable from 'react-native-draggable'
-import { manipulate, manipulateAsync, FlipType, SaveFormat } from 'expo-image-manipulator'
 import * as MediaLibrary from 'expo-media-library'
 import { captureRef } from 'react-native-view-shot'
+import * as WebBrowser from 'expo-web-browser'
 
 const Stack = createNativeStackNavigator()
-
-// const ExampleWithHoc = gestureHandlerRootHOC(() => (
-//     <View>
-//       <DraggableBox />
-//     </View>
-//   )
-// )
 
 export default function App() {
   
@@ -86,105 +71,119 @@ export function GalleryActivity() {
   
   const [docsList, setDocsList] = useState([])
 
-  const _getAllFilesInDirectory = async() => {
-    let dir = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory)
-    dir.map(async (val) => {
-      console.log(`FileSystem.cacheDirectory + val: ${FileSystem.cacheDirectory + val}`)
-      const fileUri = FileSystem.cacheDirectory + val
-      const content = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.UTF8 })
-      const info = await FileSystem.getInfoAsync(fileUri)
-      const fileUriParts = fileUri.split('/')
-      const fileUriPartsLength = fileUriParts.length
-      const lastFileUriPartIndex = fileUriPartsLength - 1
-      const fileName = fileUriParts[lastFileUriPartIndex]
-      const docInfo = {
-        content: content,
-        info: info,
-        name: fileName
-      }
-      console.log(info)
-      if (fileName.includes('.png')) {
-        docsList.push(docInfo)
-      }
-    })
+  const getMyAssets = async () => {
+    const isAlbumExists = await MediaLibrary.requestPermissionsAsync()
+    if (isAlbumExists) {
+      const albumName = 'extended-graphici-editor-album'
+      let album = await MediaLibrary.getAlbumAsync(albumName)
+      const assets = await MediaLibrary.getAssetsAsync({
+        album: album,
+        mediaType: [
+          MediaLibrary.MediaType.photo
+        ]
+      })
+      assets.assets.forEach(asset => {
+        docsList.push(asset)
+      })
+    }
   }
   
-  useEffect(() => _getAllFilesInDirectory(), [])
+  useEffect(() => getMyAssets(), [])
 
-  _getAllFilesInDirectory()
+  getMyAssets()
+
 
   const getParsedDate = (modificationTime) => {
     const currentDateTime = new Date()
     currentDateTime.setMilliseconds(modificationTime)
     const year = currentDateTime.getFullYear()
-    const monthIndex = currentDateTime.getMonth()
-    // const month = monthIndex + 1
-    const month = currentDateTime.getMonth()
-    const day = currentDateTime.getDate()
-    const hours = currentDateTime.getHours()
-    const minutes = currentDateTime.getMinutes()
+    let month = currentDateTime.getMonth()
+    let isAddPrefix = month < 10
+    if (isAddPrefix) {
+      month = `0${month}`
+    }
+    let day = currentDateTime.getDate()
+    isAddPrefix = day < 10
+    if (isAddPrefix) {
+      day = `0${day}`
+    }
+    let hours = currentDateTime.getHours()
+    isAddPrefix = hours < 10
+    if (isAddPrefix) {
+      hours = `0${hours}`
+    }
+    let minutes = currentDateTime.getMinutes()
+    isAddPrefix = minutes < 10
+    if (isAddPrefix) {
+      minutes = `0${minutes}`
+    }
     return `${year}/${month}/${day} ${hours}:${minutes}`
   }
 
   return (
     <ScrollView>
       {
-        docsList.map((doc, docIndex) => {
-          return (
-            <View
-              key={docIndex}
-              style={styles.galleryActivityContainerItem}
-            >
-              <Image
-                width="200"
-                height="200"
-                style={{
-                  width: 200,
-                  height: 200,
-                  minWidth: 200,
-                  minHeight: 200,
-                  borderWidth: 1,
-                  borderColor: 'rgb(0, 0, 0)',
-                  backgroundColor: 'rgb(255, 255, 255)'
-                }}
-                // source={{uri: doc.info.uri}}
-                source={{uri:'file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540anonymous%252Fgraphic_editor-3dec9138-7521-40a1-a173-5dadabf73790/extended_graphic_editor_export.png'}}
-              />
-              <Text>
-                {
-                  getParsedDate(doc.info.modificationTime)
-                }
-              </Text>
-              <Text>
-                {
-                  `${
-                    doc.info.size / 1024 / 1024 > 0 ?
-                      `${(doc.info.size / 1024 / 1024).toFixed(2)} MB`
-                    : doc.info.size / 1024 > 0 ?
-                      `${doc.info.size / 1024} KB`
-                    : `${doc.info.size.toFixed(2)} B`
-                  }`
-                }
-              </Text>
+        docsList.length <= 0 ?
+          <Text>
+            Вы не сохранили еще ни 1 рисунок
+          </Text>
+        :
+          docsList.map((doc, docIndex) => {
+            return (
               <View
-                style={styles.galleryActivityContainerItemFooter}
+                key={docIndex}
+                style={styles.galleryActivityContainerItem}
               >
-                <FontAwesome5
-                  name="trash"
-                  size={24}
-                  color="black"
-                  style={styles.galleryActivityContainerItemFooterElement}
+                <Image
+                  width="200"
+                  height="200"
+                  style={{
+                    width: 200,
+                    height: 200,
+                    minWidth: 200,
+                    minHeight: 200,
+                    borderWidth: 1,
+                    borderColor: 'rgb(0, 0, 0)',
+                    backgroundColor: 'rgb(255, 255, 255)'
+                  }}
+                  // source={{uri: doc.info.uri}}
+                  source={{ uri: doc.uri }}
                 />
-                <Feather
-                  name="more-vertical"
-                  size={24}
-                  color="black"
-                  style={styles.galleryActivityContainerItemFooterElement}
-                />
+                <Text>
+                  {
+                    getParsedDate(doc.modificationTime)
+                  }
+                </Text>
+                <Text>
+                  {
+                    // `${
+                    //   doc.info.size / 1024 / 1024 > 0 ?
+                    //     `${(doc.info.size / 1024 / 1024).toFixed(2)} MB`
+                    //   : doc.info.size / 1024 > 0 ?
+                    //     `${doc.info.size / 1024} KB`
+                    //   : `${doc.info.size.toFixed(2)} B`
+                    // }`
+                  }
+                </Text>
+                <View
+                  style={styles.galleryActivityContainerItemFooter}
+                >
+                  <FontAwesome5
+                    name="trash"
+                    size={24}
+                    color="black"
+                    style={styles.galleryActivityContainerItemFooterElement}
+                  />
+                  <Feather
+                    name="more-vertical"
+                    size={24}
+                    color="black"
+                    style={styles.galleryActivityContainerItemFooterElement}
+                  />
+                </View>
               </View>
-            </View>
-          )
-        })
+            )
+          })
       }
     </ScrollView>
   )
@@ -286,6 +285,8 @@ export function MainActivity({ navigation, route }) {
 
   const [isAcceptExitDialogVisible, setIsAcceptExitDialogVisible] = useState(false)
 
+  const [isSaveAsDialogVisible, setIsSaveAsDialogVisible] = useState(false)
+
   const goToActivity = (navigation, activityName, params = {}) => {
     navigation.navigate(activityName, params)
   }
@@ -299,12 +300,9 @@ export function MainActivity({ navigation, route }) {
       alignItems: 'center',
       height: '100%'
     }}>
-      <Text>
-        Палитра
-      </Text>
       <ColorPicker
         onColorSelected={color => setPrimaryColor(color)}
-        // style={styles.colorpiker}
+        style={styles.colorpiker}
       />
     </View>
   )
@@ -338,6 +336,18 @@ export function MainActivity({ navigation, route }) {
   const [imgUri, setImgUri] = useState('')
 
   const [isGesturesEnabled, setIsGesturesEnabled] = useState(false)
+
+  const fileFormats = [
+    'raw',
+    'png',
+    'jpg',
+  ]
+
+  const [fileFormat, setFileFormat] = useState({
+    checked: 'png'
+  })
+
+  const [isExportDialogVisible, setIsExportDialogVisible] = useState(false)
 
   const getActiveLayerStyle = (layerIndex) => {
     if (activeLayer === layerIndex) {
@@ -579,6 +589,7 @@ export function MainActivity({ navigation, route }) {
         const x = nativeEvent.locationX
         const y = nativeEvent.locationY
         ctx.lineTo(x, y)
+        ctx.strokeStyle = primaryColor
         ctx.stroke()
       } else if (isEraserTool) {
         const nativeEvent = event.nativeEvent
@@ -587,6 +598,7 @@ export function MainActivity({ navigation, route }) {
         const x = nativeEvent.locationX
         const y = nativeEvent.locationY
         ctx.lineTo(x, y)
+        ctx.strokeStyle = 'rgb(255, 255, 255)'
         ctx.stroke()
       } else if (isHandTool) {
 
@@ -602,22 +614,22 @@ export function MainActivity({ navigation, route }) {
         const isOvalCurve = curve === 'oval'
         const isPolygoneCurve = curve === 'polygone'
         if (isRectCurve) {
+          ctx.strokeStyle = primaryColor
           ctx.strokeRect(initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
         } else if (isOvalCurve) {
-          // ctx.arc(initialTouch.x, initialTouch.y, 50, 0, 2 * Math.PI, false)
           drawEllipse(ctx, initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
+          ctx.strokeStyle = primaryColor
           ctx.stroke()
         } else if (isPolygoneCurve) {
           ctx.moveTo(curvePoints[0].x, curvePoints[0].y)
           ctx.quadraticCurveTo(curvePoints[1].x, curvePoints[1].y, curvePoints[2].y, curvePoints[2].y)
+          ctx.strokeStyle = primaryColor
           ctx.stroke()
         }
       } else if (isSelectTool) {
         
       } else if (isShapeTool) {
         const nativeEvent = event.nativeEvent
-        // const x = nativeEvent.pageX
-        // const y = nativeEvent.pageY
         const x = nativeEvent.locationX
         const y = nativeEvent.locationY
         ctx.clearRect(0, 0, 1000, 1000)
@@ -625,13 +637,16 @@ export function MainActivity({ navigation, route }) {
         const isOvalShape = shape === 'oval'
         const isPolygoneShape = shape === 'polygone'
         if (isRectShape) {
+          ctx.fillStyle = primaryColor
           ctx.fillRect(initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
         } else if (isOvalShape) {
           drawEllipse(ctx, initialTouch.x, initialTouch.y, x - initialTouch.x, y - initialTouch.y)
+          ctx.fillStyle = primaryColor
           ctx.fill()
         } else if (isPolygoneShape) {
           ctx.moveTo(curvePoints[0].x, curvePoints[0].y)
           ctx.quadraticCurveTo(curvePoints[1].x, curvePoints[1].y, curvePoints[2].y, curvePoints[2].y)
+          ctx.fillStyle = primaryColor
           ctx.fill()
         }
       } else if (isFillTool) {
@@ -711,43 +726,31 @@ export function MainActivity({ navigation, route }) {
     }
   }
 
-  const saveFile = async (content) => {
+  const saveFile = async (content, format) => {
     
-    // const savedFileName = 'extended_graphic_editor_export.png'
-    const savedFileName = 'extended_graphic_editor_image_export.png'
-    let fileUri = FileSystem.cacheDirectory + savedFileName
-    // console.log(`create fileUri: ${fileUri}`)
-    await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 })
-    // await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.Base64 })
-
-    // const manipResult = await manipulateAsync(
-    //   fileUri,
-    //   [
-    //     { rotate: 90 },
-    //     { flip: FlipType.Vertical },
-    //   ],
-    //   { compress: 1, format: SaveFormat.PNG }
-    // )
-
-    // setTimeout(() => {
-    //   manipulate(
-    //     fileUri,
-    //     [
-    //       { rotate: 90 },
-    //       { flip: FlipType.Vertical },
-    //     ],
-    //     { compress: 1, format: SaveFormat.PNG }
-    //   )
-    //   showToast('Сохранение завершено')
-    // }, 5000)
-    showToast('Сохранение завершено')
-
     const isCanCreate = await MediaLibrary.requestPermissionsAsync()
     if (isCanCreate) {
+      const albumName = 'extended-graphici-editor-album'
+      let album = await MediaLibrary.getAlbumAsync(albumName)
+      // let result = await captureRef(container, {
+      //   format: 'png'
+      // })
       let result = await captureRef(container, {
-        format: 'png'
+        format: format
       })
-      MediaLibrary.createAssetAsync(result)
+      const asset = await MediaLibrary.createAssetAsync(result)
+      const isAlbumNotExists = album === null
+      if (isAlbumNotExists) {
+        album = await MediaLibrary.createAlbumAsync(albumName, asset, false)
+      }
+      const myAssetId = asset.id
+      const addedAssets = [
+        myAssetId
+      ]
+      const isSuccess = await MediaLibrary.addAssetsToAlbumAsync(addedAssets, album)
+      if (isSuccess) {
+        showToast('Сохранение завершено')
+      }
     }
 
   }
@@ -1121,24 +1124,14 @@ export function MainActivity({ navigation, route }) {
                     style={styles.toolBarPreFooterItem}
                   >
                     <Button
+                      style={{
+                        zIndex: 0
+                      }}
                       title="Сохр."
                       onPress={async () => {
                         const uint8array = await ctx.getImageData(60, 60, 200, 100)
                         const string = new encoding.TextDecoder('utf-8').decode(uint8array)
-                        // const blob = new Blob([uint8array], { type: "image/bmp" })
-                        // console.log(`blob: ${blob}`)
-                        // console.log(`string: ${string}`)
-                        saveFile(string)
-                        // blob.stream().then((value) => {
-                        //   console.log(`blobStream: ${value}`)
-                        //   saveFile(value)
-                        // })
-                        // blob.text().then((value) => {
-                        //   console.log(`blobData: ${value}`)
-                        //   saveFile(value)
-                        // })
-                        // const a = await blob.text()
-                        // saveFile(blob)
+                        saveFile(string, 'png')
                       }}
                     />
                   </View>
@@ -1167,7 +1160,10 @@ export function MainActivity({ navigation, route }) {
                   visible={isBurgerContextMenuVisible}
                 >
                   <MaterialMenu.MenuItem
-                    onPress={() => {
+                    onPress={async () => {
+                      const uint8array = await ctx.getImageData(60, 60, 200, 100)
+                      const string = new encoding.TextDecoder('utf-8').decode(uint8array)
+                      saveFile(string, 'png')
                       setIsBurgerContextMenuVisible(false)
                     }}
                   >
@@ -1178,6 +1174,7 @@ export function MainActivity({ navigation, route }) {
                   <MaterialMenu.MenuItem
                     onPress={() => {
                       setIsBurgerContextMenuVisible(false)
+                      setIsSaveAsDialogVisible(true)
                     }}
                   >
                     <Text>
@@ -1187,6 +1184,7 @@ export function MainActivity({ navigation, route }) {
                   <MaterialMenu.MenuItem
                     onPress={() => {
                       setIsBurgerContextMenuVisible(false)
+                      setIsExportDialogVisible(true)
                     }}
                   >
                     <Text>
@@ -1239,8 +1237,9 @@ export function MainActivity({ navigation, route }) {
                     </Text>
                   </MaterialMenu.MenuItem>
                   <MaterialMenu.MenuItem
-                    onPress={() => {
+                    onPress={async () => {
                       setIsBurgerContextMenuVisible(false)
+                      await WebBrowser.openBrowserAsync('market://details?id=com.greenbulb.calibrate')
                     }}
                   >
                     <Text>
@@ -1252,6 +1251,7 @@ export function MainActivity({ navigation, route }) {
                   <MaterialMenu.MenuItem
                     onPress={() => {
                       setIsBurgerContextMenuVisible(false)
+                      goToActivity(navigation, 'StartActivity')
                     }}
                   >
                     <Text>
@@ -1261,6 +1261,7 @@ export function MainActivity({ navigation, route }) {
                   <MaterialMenu.MenuItem
                     onPress={() => {
                       setIsBurgerContextMenuVisible(false)
+                      goToActivity(navigation, 'StartActivity')
                     }}
                   >
                     <Text>
@@ -2123,6 +2124,110 @@ export function MainActivity({ navigation, route }) {
                   />
                 </Dialog.Actions>
               </Dialog>
+              <Dialog
+                visible={isSaveAsDialogVisible}
+                onDismiss={() => setIsSaveAsDialogVisible(false)}>
+                <Dialog.Title>
+                  Пункт назначения
+                </Dialog.Title>
+                <Dialog.Content>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setIsSaveAsDialogVisible(false)
+                      const uint8array = await ctx.getImageData(60, 60, 200, 100)
+                      const string = new encoding.TextDecoder('utf-8').decode(uint8array)
+                      saveFile(string, 'png')
+                    }}
+                  >
+                    <Text>
+                      Сохранять локально
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setIsSaveAsDialogVisible(false)
+                      goToActivity(navigation, 'StartActivity')
+                    }}
+                  >
+                    <Text>
+                      Сохранять онлайн
+                    </Text>
+                  </TouchableOpacity>
+                </Dialog.Content>
+                <Dialog.Actions>
+                  <Button
+                    title="Отмена"
+                    onPress={() => {
+                      setIsSaveAsDialogVisible(false)
+                    }}
+                  />
+                </Dialog.Actions>
+              </Dialog>
+              <Dialog
+                visible={isExportDialogVisible}
+                onDismiss={() => setIsExportDialogVisible(false)}>
+                <Dialog.Title>
+                  Формат файла
+                </Dialog.Title>
+                <Dialog.Content>
+                  <View
+                    style={styles.dialogContentRow}
+                  >
+                    <RadioButton
+                      value={fileFormats[0]}
+                      label={fileFormats[0]}
+                      status={fileFormat.checked === fileFormats[0] ? 'checked' : 'unchecked'}
+                      onPress={() => { setFileFormat({ checked: fileFormats[0] }) }}
+                    />
+                    <Text>
+                      PNG
+                    </Text>
+                  </View>
+                  <View
+                    style={styles.dialogContentRow}
+                  >
+                    <RadioButton
+                      value={fileFormats[1]}
+                      label={fileFormats[1]}
+                      status={fileFormat.checked === fileFormats[1] ? 'checked' : 'unchecked'}
+                      onPress={() => { setFileFormat({ checked: fileFormats[1] }) }}
+                    />
+                    <Text>
+                      PNG (прозрачный)
+                    </Text>
+                  </View>
+                  <View
+                    style={styles.dialogContentRow}
+                  >
+                    <RadioButton
+                      value={fileFormats[2]}
+                      label={fileFormats[2]}
+                      status={fileFormat.checked === fileFormats[2] ? 'checked' : 'unchecked'}
+                      onPress={() => { setFileFormat({ checked: fileFormats[2] }) }}
+                    />
+                    <Text>
+                      JPG
+                    </Text>
+                  </View>
+                </Dialog.Content>
+                <Dialog.Actions>
+                  <Button
+                    title="Отмена"
+                    onPress={() => {
+                      setIsExportDialogVisible(false)
+                    }}
+                  />
+                  <Button
+                    title="ОК"
+                    onPress={async () => {
+                      setIsExportDialogVisible(false)
+                      const uint8array = await ctx.getImageData(60, 60, 200, 100)
+                      const string = new encoding.TextDecoder('utf-8').decode(uint8array)
+                      saveFile(string, fileFormat.checked)
+                    }}
+                  />
+                </Dialog.Actions>
+              </Dialog>
             </SafeAreaView>
           </DrawerLayoutAndroid>
         </DrawerLayoutAndroid>
@@ -2277,7 +2382,7 @@ export function CreateCanvasActivity({ navigation }) {
             <TextInput  
               width={200}
               value={createCanvasDialogWidthContent}
-              multiline
+              keyboardType="numeric"
               onChangeText={(value) => setCreateCanvasDialogWidthContent(value)}
             />
             <SelectDropdown
@@ -2305,7 +2410,7 @@ export function CreateCanvasActivity({ navigation }) {
             <TextInput
               width={200}
               value={createCanvasDialogHeightContent}
-              multiline
+              keyboardType="numeric"
               onChangeText={(value) => setCreateCanvasDialogHeightContent(value)}
             />
             <SelectDropdown
@@ -2330,7 +2435,7 @@ export function CreateCanvasActivity({ navigation }) {
           <TextInput
             width={200}
             value={createCanvasDialogDpiContent}
-            multiline
+            keyboardType="numeric"
             onChangeText={(value) => setCreateCanvasDialogDpiContent(value)}
           />
           <Text>
