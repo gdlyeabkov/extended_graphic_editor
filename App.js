@@ -26,14 +26,11 @@ const Stack = createNativeStackNavigator()
 
 export default function App() {
   
-  // const testActivity = 'MainActivity'
-  // const testActivity = 'GalleryActivity'
-  const testActivity = 'StartActivity'
-  // const testActivity = 'CreateCanvasActivity'
-
+  const startActivity = 'StartActivity'
+  
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName={testActivity}>
+      <Stack.Navigator initialRouteName={startActivity}>
         <Stack.Screen
           name="MainActivity"
           component={MainActivity}
@@ -146,23 +143,11 @@ export function GalleryActivity() {
                     borderColor: 'rgb(0, 0, 0)',
                     backgroundColor: 'rgb(255, 255, 255)'
                   }}
-                  // source={{uri: doc.info.uri}}
                   source={{ uri: doc.uri }}
                 />
                 <Text>
                   {
                     getParsedDate(doc.modificationTime)
-                  }
-                </Text>
-                <Text>
-                  {
-                    // `${
-                    //   doc.info.size / 1024 / 1024 > 0 ?
-                    //     `${(doc.info.size / 1024 / 1024).toFixed(2)} MB`
-                    //   : doc.info.size / 1024 > 0 ?
-                    //     `${doc.info.size / 1024} KB`
-                    //   : `${doc.info.size.toFixed(2)} B`
-                    // }`
                   }
                 </Text>
                 <View
@@ -466,19 +451,6 @@ export function MainActivity({ navigation, route }) {
         
         canvas.width = Number.parseInt(width)
         canvas.height = Number.parseInt(height)
-        
-        // ctx.fillStyle = 'rgb(0, 0, 0)'
-        // ctx.fillRect(0, 0, 1000, 1000)
-        // let imageData = await ctx.getImageData(60, 60, 200, 100)
-        // ctx.putImageData(imageData, 150, 10)
-        // var bmp = new Bitmap(150, 150)
-        // var url = bmp.dataURL()
-        // console.log(`url: ${url}`)
-        // console.log(`data: ${imageData.data}`)
-        // setImgUri(imageData.data)
-        // const dataUrl = getDataUrlFromArr(imageData.data, canvas.width, canvas.height)
-        // console.log(`dataUrl: ${dataUrl}`)
-        // await setImgUri(dataUrl)
 
         BackHandler.addEventListener('hardwareBackPress', function () {
           if (isToolbarVisible) {
@@ -523,8 +495,6 @@ export function MainActivity({ navigation, route }) {
     } else if (isCurveTool) {
       console.log('открываем кривую')
       const nativeEvent = event.nativeEvent
-      // const x = nativeEvent.pageX
-      // const y = nativeEvent.pageY
       const x = nativeEvent.locationX
       const y = nativeEvent.locationY
       setInitialTouch({
@@ -535,18 +505,10 @@ export function MainActivity({ navigation, route }) {
       ctx.lineWidth = 1.0
       ctx.beginPath()
     } else if (isSelectTool) {
-      console.log('выбираю кривую')
-      const nativeEvent = event.nativeEvent
-      // const x = nativeEvent.pageX
-      // const y = nativeEvent.pageY
-      const x = nativeEvent.locationX
-      const y = nativeEvent.locationY
-      
+      // выбираю кривую
     } else if (isShapeTool) {
       console.log('открываем кривую')
       const nativeEvent = event.nativeEvent
-      // const x = nativeEvent.pageX
-      // const y = nativeEvent.pageY
       const x = nativeEvent.locationX
       const y = nativeEvent.locationY
       setInitialTouch({
@@ -557,10 +519,8 @@ export function MainActivity({ navigation, route }) {
       ctx.lineWidth = 1.0
       ctx.beginPath()
     } else if (isTextTool) {
-      console.log('добавляем положение для текста')
+      // добавляем положение для текста
       const nativeEvent = event.nativeEvent
-      // const x = nativeEvent.pageX
-      // const y = nativeEvent.pageY
       const x = nativeEvent.locationX
       const y = nativeEvent.locationY
       setInitialTouch({
@@ -571,7 +531,6 @@ export function MainActivity({ navigation, route }) {
   }
 
   const onCanvasTouchMove = async (event) => {
-    // console.log(`Object.keys(event.nativeEvent): ${Object.keys(event.nativeEvent)}`)
     const isPenTool = tool === 'pen'
     const isEraserTool = tool === 'eraser'
     const isHandTool = tool === 'hand'
@@ -579,13 +538,9 @@ export function MainActivity({ navigation, route }) {
     const isSelectTool = tool === 'select'
     const isShapeTool = tool === 'shape'
     const isFillTool = tool === 'fill'
-    const isGradientTool = tool === 'gradient'
-    const isTextTool = tool === 'text'
     if (!isGesturesEnabled) {
       if (isPenTool) {
         const nativeEvent = event.nativeEvent
-        // const x = nativeEvent.pageX
-        // const y = nativeEvent.pageY
         const x = nativeEvent.locationX
         const y = nativeEvent.locationY
         ctx.lineTo(x, y)
@@ -593,8 +548,6 @@ export function MainActivity({ navigation, route }) {
         ctx.stroke()
       } else if (isEraserTool) {
         const nativeEvent = event.nativeEvent
-        // const x = nativeEvent.pageX
-        // const y = nativeEvent.pageY
         const x = nativeEvent.locationX
         const y = nativeEvent.locationY
         ctx.lineTo(x, y)
@@ -604,8 +557,6 @@ export function MainActivity({ navigation, route }) {
 
       } else if (isCurveTool) {
         const nativeEvent = event.nativeEvent
-        // const x = nativeEvent.pageX
-        // const y = nativeEvent.pageY
         const x = nativeEvent.locationX
         const y = nativeEvent.locationY
         ctx.clearRect(0, 0, 1000, 1000)
@@ -666,7 +617,7 @@ export function MainActivity({ navigation, route }) {
     const isGradientTool = tool === 'gradient'
     const isTextTool = tool === 'text'
     if (isPenTool) {
-      console.log('закрываем кривую')
+      // закрываем кривую
       ctx.closePath()
     } else if (isEraserTool) {
       console.log('закрываем кривую')
@@ -732,9 +683,6 @@ export function MainActivity({ navigation, route }) {
     if (isCanCreate) {
       const albumName = 'extended-graphici-editor-album'
       let album = await MediaLibrary.getAlbumAsync(albumName)
-      // let result = await captureRef(container, {
-      //   format: 'png'
-      // })
       let result = await captureRef(container, {
         format: format
       })
@@ -772,11 +720,6 @@ export function MainActivity({ navigation, route }) {
     ctx.bezierCurveTo(xm - ox, ye, x, ym + oy, x, ym)
     ctx.stroke()
   }
-
-  useEffect(() => {
-    // let imageData = ctx.getImageData(60, 60, 200, 100)
-    // ctx.putImageData(imageData, 150, 10)
-  }, [])
 
   return (
     <>
@@ -1009,18 +952,8 @@ export function MainActivity({ navigation, route }) {
                     />
                   </View>
                 :
-                  <View>
-
-                  </View>
+                  <View></View>
               }
-                {/* <Modal> */}
-                {/* <ExampleWithHoc> */}
-                {/* <TapGestureHandler>
-                <RotationGestureHandler
-                  onChange={(event) => {
-                    console.log(`event: ${event}`)
-                  }}
-                > */}
                 <Gestures
                   draggable={isGesturesEnabled}
                   rotatable={isGesturesEnabled}
@@ -1047,12 +980,7 @@ export function MainActivity({ navigation, route }) {
                   }}
                 >
                   <Pressable
-                    style={[styles.canvas,
-                      {
-                      // borderTopWidth: 1,
-                      // borderTopColor: 'red'
-                    }
-                    ]}
+                    style={styles.canvas}
                     onTouchStart={onCanvasTouchStart}
                     onTouchMove={onCanvasTouchMove}
                     onTouchEnd={onCanvasTouchEnd}
@@ -1064,10 +992,6 @@ export function MainActivity({ navigation, route }) {
                     />
                   </Pressable>
                 </Gestures>
-                {/* </RotationGestureHandler> 
-                </TapGestureHandler> */}
-              {/* </ExampleWithHoc> */}
-              {/* </Modal> */}
               <Draggable
                 x={0}
                 y={510}
@@ -1610,11 +1534,7 @@ export function MainActivity({ navigation, route }) {
                   <MaterialMenu.MenuItem
                     onPress={async () => {
                       setIsToggleOrientationContextMenuVisible(false)
-                      
-                      // await ctx.rotate(20 * Math.PI / 180)
-                      // ctx.save()
                       await ctx.rotate(180)
-                      // ctx.restore()
                     }}
                   >
                     <View
@@ -2010,7 +1930,6 @@ export function MainActivity({ navigation, route }) {
                   <Button
                     title="ЗАДАТЬ"
                     onPress={() => {
-                      // ctx.font = 'bold 48px serif'
                       ctx.font = `${isTextToolDialogItalic ? 'italic ' : ''} ${isTextToolDialogBold ? 'bold ' : ''} ${textToolDialogFontSize}pt serif`
                       ctx.fillStyle = `${textToolDialogColorPickerTextColor}`
                       ctx.fillText(textToolDialogContent, initialTouch.x, initialTouch.y)
@@ -2336,13 +2255,6 @@ export function CreateCanvasActivity({ navigation }) {
           <Button
             title="РЕДАКТИРОВАТЬ"
             onPress={() => {
-              // setCreateCanvasDialogWidthContent('1007')
-              // setCreateCanvasDialogHeightContent('1414')
-              // setCreateCanvasDialogDpiContent('350')
-              // setCreateCanvasDialogSize('\n')
-              // setBackgroundColor({ checked: backgroundColors[0] })
-              // setCreateCanvasDialogColorPickerTempColor('')
-              // setCreateCanvasDialogColorPickerColor('')
               setIsCanvasCreateDialogVisible(true)
             }}
           />
